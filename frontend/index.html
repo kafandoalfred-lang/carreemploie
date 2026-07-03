@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>carréemploie - Trouver du travail facilement au Burkina Faso</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase Client Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="background-decor">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+
+    <!-- Barre de Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo" data-tab="tab-home">
+                <i class="fa-solid fa-square-poll-horizontal brand-icon"></i>
+                <span>carré<span>emploie</span></span>
+            </div>
+            <ul class="nav-links">
+                <li class="nav-link active" data-tab="tab-home">Accueil</li>
+                <li class="nav-link" data-tab="tab-search">Recherche Directe</li>
+                <li class="nav-link" data-tab="tab-register">Alerte IA</li>
+                <li class="nav-link" data-tab="tab-profile">Mon Espace</li>
+            </ul>
+            <div class="nav-status-badge" id="nav-badge">
+                <i class="fa-solid fa-user-lock"></i> <span id="nav-badge-text">Forfait Gratuit</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- PAGE 1: ACCUEIL -->
+        <section id="tab-home" class="tab-content active">
+            <div class="hero-section">
+                <div class="hero-text">
+                    <span class="hero-tagline">Votre assistant de recherche intelligent</span>
+                    <h2>Donner la même chance à tous les candidats pour trouver du travail</h2>
+                    <p class="hero-desc">
+                        carréemploie est un robot intelligent (IA) qui cherche pour vous du travail. Il parcourt chaque heure les sites d'emploi au Burkina Faso. Si un poste correspond à votre profil (chauffeur, serveur, maçon, développeur, etc.), il vous envoie directement un message sur WhatsApp ou par email.
+                    </p>
+                    <div class="hero-ctas">
+                        <button class="btn-primary" data-target="tab-register">
+                            <i class="fa-solid fa-bell"></i> Activer mon alerte WhatsApp
+                        </button>
+                        <button class="btn-outline" data-target="tab-search">
+                            <i class="fa-solid fa-magnifying-glass"></i> Faire une recherche directe
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-image-wrapper">
+                    <!-- Carte de statistiques CSS épurée -->
+                    <div class="hero-stats-card">
+                        <div class="stat-header">
+                            <i class="fa-solid fa-bolt-lightning pulse-icon"></i>
+                            <h4>Activité de l'IA en temps réel</h4>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">142</span>
+                            <span class="stat-label">Offres scannées aujourd'hui</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">WhatsApp</span>
+                            <span class="stat-label">Alertes envoyées en direct</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">100%</span>
+                            <span class="stat-label">Sans favoritisme (IA neutre)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nouveauté : 4 dernières offres trouvées (Cliquables) -->
+            <section class="latest-jobs-section">
+                <div class="section-title-wrap">
+                    <h3><i class="fa-solid fa-circle-nodes text-success animate-pulse"></i> Offres d'emploi trouvées récemment</h3>
+                    <p>Cliquez sur une offre pour postuler ou configurer vos alertes.</p>
+                </div>
+                <div id="home-jobs-grid" class="home-jobs-grid">
+                    <!-- Les 4 offres seront injectées ici par JS -->
+                </div>
+            </section>
+
+            <!-- Nouveauté : Section Témoignages de réussite locale -->
+            <section class="testimonials-section">
+                <div class="section-title-wrap">
+                    <h3><i class="fa-solid fa-users text-gold"></i> Ils ont trouvé du travail grâce au robot</h3>
+                    <p>Découvrez les retours de nos candidats au Burkina Faso.</p>
+                </div>
+                <div class="testimonials-grid">
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                        <p class="testimonial-text">"Je cherchais du travail comme chauffeur à Ouaga. Le robot m'a envoyé un message WhatsApp avec l'offre de Safi Transports. J'ai postulé le soir même et j'ai été recruté ! C'est vraiment réel."</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar"><i class="fa-solid fa-user-check"></i></div>
+                            <div>
+                                <h5 class="author-name">Moussa Sawadogo</h5>
+                                <span class="author-role">Chauffeur Livreur - Ouagadougou</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                        <p class="testimonial-text">"Je ne pensais pas que les ordinateurs pouvaient faire ça au Burkina. J'ai configuré mon profil de secrétaire administrative et deux jours après, j'ai reçu le lien d'un cabinet de recrutement. Aujourd'hui, je travaille."</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar"><i class="fa-solid fa-user-check"></i></div>
+                            <div>
+                                <h5 class="author-name">Alimata Diallo</h5>
+                                <span class="author-role">Secrétaire Médicale - Bobo-Dioulasso</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                        <p class="testimonial-text">"Ce qui me plaît, c'est que l'IA donne les mêmes chances à tout le monde. Pas besoin d'avoir un bras long pour être averti en premier. Je recommande le forfait annuel !"</p>
+                        <div class="testimonial-author">
+                            <div class="author-avatar"><i class="fa-solid fa-user-check"></i></div>
+                            <div>
+                                <h5 class="author-name">Seydou Ouattara</h5>
+                                <span class="author-role">Comptable Junior - Ouagadougou</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section caractéristiques simplifiée -->
+            <section class="features-section" style="margin-top: 40px;">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                    <h3>Égalité pour tous</h3>
+                    <p>L'ordinateur regarde uniquement vos compétences et votre expérience. Aucun favoritisme, chaque candidat a sa chance.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                    <h3>Alertes sur WhatsApp</h3>
+                    <p>Plus besoin de chercher sur internet tous les jours. Le robot vous envoie un message sur votre téléphone dès qu'un emploi est publié.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-message"></i></div>
+                    <h3>Explications simples</h3>
+                    <p>Pour chaque offre trouvée, l'IA vous explique en deux phrases claires pourquoi ce travail correspond à votre profil.</p>
+                </div>
+            </section>
+        </section>
+
+        <!-- PAGE 2: RECHERCHE DIRECTE -->
+        <section id="tab-search" class="tab-content">
+            <header class="page-header">
+                <h2><i class="fa-solid fa-magnifying-glass"></i> Recherche Directe</h2>
+                <p>Consultez immédiatement les offres d'emploi locales analysées par notre IA.</p>
+            </header>
+
+            <div class="search-bar-container">
+                <div class="search-input-group">
+                    <i class="fa-solid fa-briefcase input-icon"></i>
+                    <input type="text" id="search-title" placeholder="Quel métier ? (ex: Chauffeur, Secrétaire...)">
+                </div>
+                <div class="search-input-group">
+                    <i class="fa-solid fa-location-dot input-icon"></i>
+                    <input type="text" id="search-location" placeholder="Quelle ville ? (Facultatif - ex: Ouagadougou...)">
+                </div>
+                <button type="button" class="btn-search" id="btn-run-search">
+                    Rechercher
+                </button>
+            </div>
+
+            <!-- Résultats de la recherche -->
+            <div class="search-results-section">
+                <div class="results-header-info">
+                    <span id="results-count-text">Entrez vos critères pour lancer la recherche IA</span>
+                </div>
+                
+                <div id="search-jobs-list" class="search-jobs-list">
+                    <!-- Injecté par JS -->
+                </div>
+
+                <!-- Paywall Overlay pour flouter après 2 jobs -->
+                <div id="search-paywall" class="search-paywall-overlay hidden">
+                    <div class="paywall-overlay-content">
+                        <i class="fa-solid fa-lock paywall-lock-icon"></i>
+                        <h3>Contenu Premium Verrouillé</h3>
+                        <p>Vous avez consulté vos 2 offres gratuites. Abonnez-vous pour débloquer toutes les opportunités locales et recevoir les alertes en continu.</p>
+                        <button class="btn-paywall-redirect" data-target="tab-profile">
+                            <i class="fa-solid fa-crown"></i> Voir les forfaits d'abonnement
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PAGE 3: ALERTE IA -->
+        <section id="tab-register" class="tab-content">
+            <header class="page-header">
+                <h2><i class="fa-solid fa-bell"></i> Configuration de l'Alerte IA</h2>
+                <p>Le robot cherche pour vous et vous envoie un message WhatsApp dès qu'il y a un job compatible.</p>
+            </header>
+
+            <section class="glass-panel">
+                <div class="alert-info-box">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <p><strong>Règle importante :</strong> Un seul compte par personne. Les deux premières alertes d'emploi envoyées sur votre messagerie sont 100% gratuites.</p>
+                </div>
+                
+                <form id="profile-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="fullname"><i class="fa-solid fa-user"></i> Votre nom complet</label>
+                            <input type="text" id="fullname" placeholder="Ex: Adama Sawadogo" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
+                            <input type="email" id="email" placeholder="Ex: adama.sawadogo@gmail.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone"><i class="fa-solid fa-phone"></i> Numéro WhatsApp (avec indicatif pays)</label>
+                            <input type="tel" id="phone" placeholder="Ex: +226 70 00 00 00">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="location"><i class="fa-solid fa-location-dot"></i> Votre Ville / Localité</label>
+                            <input type="text" id="location" placeholder="Ex: Ouagadougou" required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="jobtitle"><i class="fa-solid fa-briefcase"></i> Quel métier recherchez-vous ?</label>
+                            <input type="text" id="jobtitle" placeholder="Ex: Chauffeur, Secrétaire, Comptable..." required>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="cvtext"><i class="fa-solid fa-file-invoice"></i> Décrivez votre profil (vos compétences, permis, diplômes...)</label>
+                            <textarea id="cvtext" rows="6" placeholder="Décrivez vos expériences de travail, permis de conduire disponibles (ex: Permis C), compétences clés, etc..." required></textarea>
+                        </div>
+
+                        <div class="form-group full-width notification-preferences">
+                            <label><i class="fa-solid fa-bell"></i> Comment souhaitez-vous recevoir vos alertes ?</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="notify-email" checked>
+                                    <span class="custom-checkbox"></span>
+                                    <i class="fa-solid fa-envelope icon"></i> Email (Gratuit)
+                                </label>
+                                
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="notify-whatsapp">
+                                    <span class="custom-checkbox"></span>
+                                    <i class="fa-brands fa-whatsapp icon"></i> WhatsApp (Conseillé)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit" id="submit-btn">
+                        <span>Activer mes alertes automatiques</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Résultats immédiats après l'inscription -->
+            <section id="register-results-section" class="register-results-section hidden">
+                <div class="section-title-wrap">
+                    <h3><i class="fa-solid fa-wand-magic-sparkles text-success"></i> Offres trouvées immédiatement pour vos compétences</h3>
+                    <p>Voici les opportunités en cours d'analyse dont la date limite de candidature n'est pas dépassée :</p>
+                </div>
+                <div id="register-jobs-list" class="search-jobs-list" style="margin-top:20px;">
+                    <!-- Les cartes injectées par JS -->
+                </div>
+            </section>
+        </section>
+
+        <!-- PAGE 4: MON ESPACE -->
+        <section id="tab-profile" class="tab-content">
+            <header class="page-header">
+                <h2><i class="fa-solid fa-circle-user"></i> Mon Espace Candidat</h2>
+                <p>Vérifiez vos informations, suivez vos jours d'abonnement restants et abonnez-vous.</p>
+            </header>
+
+            <div class="glass-panel profile-dashboard-card">
+                <div class="dashboard-header">
+                    <div class="user-info-summary">
+                        <i class="fa-solid fa-user-tie avatar-icon"></i>
+                        <div>
+                            <h3 id="dash-fullname">Candidat non inscrit</h3>
+                            <p id="dash-jobtitle">Veuillez configurer votre alerte IA</p>
+                        </div>
+                    </div>
+                    <div class="subscription-status-block">
+                        <span class="status-label">Statut de votre compte</span>
+                        <span class="status-value free" id="dash-status">Compte Gratuit</span>
+                        <span class="days-remaining" id="dash-days-remaining"><i class="fa-solid fa-clock"></i> 0 jour restant</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grille des plans d'abonnement -->
+            <div class="pricing-section-container" id="pricing-section">
+                <h3 class="pricing-title"><i class="fa-solid fa-crown text-gold"></i> Choisissez votre forfait carréemploie Premium</h3>
+                <p class="pricing-subtitle">Débloquez les alertes WhatsApp illimitées et recevez instantanément les liens de candidature de toutes les offres.</p>
+                
+                <div class="pricing-grid">
+                    <!-- Plan Mensuel -->
+                    <div class="pricing-card">
+                        <span class="plan-type">Mensuel</span>
+                        <div class="price">5 000<span> FCFA</span></div>
+                        <p class="plan-desc">Pour recevoir vos alertes pendant 1 mois complet.</p>
+                        <ul class="plan-features">
+                            <li><i class="fa-solid fa-check"></i> Alertes illimitées</li>
+                            <li><i class="fa-solid fa-check"></i> Liens de postulation directs</li>
+                            <li><i class="fa-solid fa-check"></i> WhatsApp & Email</li>
+                            <li><i class="fa-solid fa-check"></i> 30 jours de service</li>
+                        </ul>
+                        <button class="btn-buy-plan" data-plan="monthly">S'abonner (5 000 FCFA)</button>
+                    </div>
+
+                    <!-- Plan 6 Mois -->
+                    <div class="pricing-card popular">
+                        <div class="popular-badge">Populaire</div>
+                        <span class="plan-type">6 Mois</span>
+                        <div class="price">25 000<span> FCFA</span></div>
+                        <p class="plan-desc">Recherche active. Vous économisez 5 000 FCFA (1 mois gratuit).</p>
+                        <ul class="plan-features">
+                            <li><i class="fa-solid fa-check"></i> Alertes illimitées</li>
+                            <li><i class="fa-solid fa-check"></i> Liens de postulation directs</li>
+                            <li><i class="fa-solid fa-check"></i> WhatsApp & Email</li>
+                            <li><i class="fa-solid fa-check"></i> 180 jours de service</li>
+                        </ul>
+                        <button class="btn-buy-plan" data-plan="semi-annual">S'abonner (25 000 FCFA)</button>
+                    </div>
+
+                    <!-- Plan Annuel -->
+                    <div class="pricing-card">
+                        <div class="best-badge">Meilleur prix</div>
+                        <span class="plan-type">Annuel</span>
+                        <div class="price">40 000<span> FCFA</span></div>
+                        <p class="plan-desc">Tranquillité totale d'un an. Économisez 20 000 FCFA !</p>
+                        <ul class="plan-features">
+                            <li><i class="fa-solid fa-check"></i> Alertes illimitées</li>
+                            <li><i class="fa-solid fa-check"></i> Liens de postulation directs</li>
+                            <li><i class="fa-solid fa-check"></i> WhatsApp & Email</li>
+                            <li><i class="fa-solid fa-check"></i> 365 jours de service</li>
+                        </ul>
+                        <button class="btn-buy-plan" data-plan="annual">S'abonner (40 000 FCFA)</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Popups de Notification -->
+        <div id="toast" class="toast hidden">
+            <i class="fa-solid fa-circle-check toast-icon"></i>
+            <span id="toast-message">Recherche activée avec succès !</span>
+        </div>
+    </main>
+
+    <footer class="app-footer">
+        <p>&copy; 2026 carréemploie. Tous droits réservés.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
