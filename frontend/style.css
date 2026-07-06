@@ -1963,3 +1963,11 @@ body {
     width: auto;
 }
 
+/* Responsive multi-job inputs grid */
+@media (max-width: 600px) {
+    .multi-job-inputs {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+}
+

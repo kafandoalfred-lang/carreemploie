@@ -236,8 +236,13 @@
                         </div>
 
                         <div class="form-group full-width">
-                            <label for="jobtitle"><i class="fa-solid fa-briefcase"></i> Quel métier recherchez-vous ?</label>
-                            <input type="text" id="jobtitle" placeholder="Ex: Chauffeur, Secrétaire, Comptable..." required>
+                            <label><i class="fa-solid fa-briefcase"></i> Quels métiers recherchez-vous ? (Jusqu'à 3 métiers)</label>
+                            <div class="multi-job-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 5px;">
+                                <input type="text" id="jobtitle-1" placeholder="Ex: Chauffeur (Principal)" required style="width: 100%;">
+                                <input type="text" id="jobtitle-2" placeholder="Ex: Vigile (Optionnel)" style="width: 100%;">
+                                <input type="text" id="jobtitle-3" placeholder="Ex: Livreur (Optionnel)" style="width: 100%;">
+                            </div>
+                            <input type="hidden" id="jobtitle">
                         </div>
 
                         <div class="form-group full-width">
@@ -386,6 +391,77 @@
                 </button>
                 <button id="btn-regwall-close" class="btn-admin-cancel" style="width: 100%; padding: 12px;">
                     Plus tard
+                </button>
+            </div>
+    <!-- Job Details Modal -->
+    <div id="job-details-modal" class="admin-modal">
+        <div class="admin-modal-content" style="max-width: 650px; padding: 30px; border-radius: 15px; background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--panel-border);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid var(--panel-border); padding-bottom: 15px;">
+                <div>
+                    <h3 id="detail-job-title" style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin: 0;"></h3>
+                    <div id="detail-job-company" style="font-size: 1.1rem; color: var(--primary-color); font-weight: 600; margin-top: 5px;"></div>
+                </div>
+                <button id="btn-close-details" style="background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="job-card-meta" style="margin-bottom: 20px;">
+                <div class="job-card-loc-src" style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 0.9rem; color: var(--text-secondary);">
+                    <span id="detail-job-location"><i class="fa-solid fa-location-dot"></i> </span>
+                    <span id="detail-job-source"><i class="fa-solid fa-globe"></i> </span>
+                    <span id="detail-job-deadline"><i class="fa-solid fa-calendar-days"></i> Limite : </span>
+                </div>
+            </div>
+
+            <div style="max-height: 250px; overflow-y: auto; margin-bottom: 25px; line-height: 1.6; color: var(--text-secondary); font-size: 0.95rem; padding-right: 5px; text-align: left;">
+                <h4 style="color: var(--text-primary); margin-bottom: 10px; font-size: 1.05rem;">Description du poste :</h4>
+                <p id="detail-job-desc" style="white-space: pre-line; margin: 0;"></p>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button id="btn-detail-apply" class="btn-search" style="flex: 1; font-weight: 600; padding: 14px;">
+                    <i class="fa-solid fa-paper-plane"></i> Recevoir le lien pour postuler par WhatsApp ou Email
+                </button>
+                <button id="btn-detail-cancel" class="btn-admin-cancel" style="padding: 14px 20px;">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Money Payment Modal -->
+    <div id="momo-payment-modal" class="admin-modal">
+        <div class="admin-modal-content" style="max-width: 480px; text-align: center; padding: 35px 25px;">
+            <div style="font-size: 3.5rem; color: var(--primary-color); margin-bottom: 15px;">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+            <h2 id="momo-plan-title" style="font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: var(--text-primary);">Abonnement Premium</h2>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px;">
+                Pour activer votre abonnement <strong id="momo-plan-name" style="color: var(--primary-color);"></strong>, veuillez effectuer le transfert de <strong id="momo-plan-price" style="color: var(--text-primary);"></strong> sur l'un des numéros ci-dessous :
+            </p>
+            
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--panel-border); border-radius: 10px; padding: 15px; margin-bottom: 25px; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span><strong style="color: #ff6600;">Orange Money :</strong> +226 56 91 16 74</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Alfred K.</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--panel-border); padding-top: 10px;">
+                    <span><strong style="color: #0099ff;">Moov Money :</strong> +226 60 77 15 22</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Alfred K.</span>
+                </div>
+            </div>
+
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 25px; font-style: italic;">
+                Une fois le dépôt effectué, cliquez sur le bouton ci-dessous pour nous envoyer votre confirmation par WhatsApp. Nous activerons votre compte immédiatement !
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button id="btn-momo-confirm-wa" class="btn-search" style="width: 100%; font-weight: 600; padding: 14px; background: #25D366 !important; border-color: #25D366 !important; color: white !important;">
+                    <i class="fa-brands fa-whatsapp"></i> Envoyer ma confirmation sur WhatsApp
+                </button>
+                <button id="btn-momo-close" class="btn-admin-cancel" style="width: 100%; padding: 12px;">
+                    Annuler
                 </button>
             </div>
         </div>

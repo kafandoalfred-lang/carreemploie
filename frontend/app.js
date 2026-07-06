@@ -22,7 +22,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabContents = document.querySelectorAll('.tab-content');
     const ctaButtons = document.querySelectorAll('[data-target]');
 
+    function prefillProfileForm() {
+        if (profile) {
+            const fullnameEl = document.getElementById('fullname');
+            const emailEl = document.getElementById('email');
+            const phoneEl = document.getElementById('phone');
+            const locationEl = document.getElementById('location');
+            const cvtextEl = document.getElementById('cvtext');
+            const notifyEmailEl = document.getElementById('notify-email');
+            const notifyWhatsappEl = document.getElementById('notify-whatsapp');
+            const jobtitle1El = document.getElementById('jobtitle-1');
+            const jobtitle2El = document.getElementById('jobtitle-2');
+            const jobtitle3El = document.getElementById('jobtitle-3');
+            const jobtitleEl = document.getElementById('jobtitle');
+
+            if (fullnameEl) fullnameEl.value = profile.fullname || "";
+            if (emailEl) emailEl.value = profile.email || "";
+            if (phoneEl) phoneEl.value = profile.phone || "";
+            if (locationEl) locationEl.value = profile.location || "";
+            if (cvtextEl) cvtextEl.value = profile.cvtext || "";
+            if (notifyEmailEl) notifyEmailEl.checked = profile.notifyEmail !== false;
+            if (notifyWhatsappEl) notifyWhatsappEl.checked = profile.notifyWhatsapp === true;
+
+            const titles = profile.jobtitle ? profile.jobtitle.split(',').map(t => t.trim()) : [];
+            if (jobtitle1El) jobtitle1El.value = titles[0] || "";
+            if (jobtitle2El) jobtitle2El.value = titles[1] || "";
+            if (jobtitle3El) jobtitle3El.value = titles[2] || "";
+            if (jobtitleEl) jobtitleEl.value = profile.jobtitle || "";
+        }
+    }
+
     function switchTab(tabId) {
+        if (tabId === 'tab-register') {
+            prefillProfileForm();
+        }
+
         document.querySelectorAll('.nav-link').forEach(link => {
             if (link.getAttribute('data-tab') === tabId) {
                 link.classList.add('active');
@@ -353,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- INITIALISATION DE LA GRILLE D'ACCUEIL AVEC LES 4 DERNIERS JOBS ---
+    // --- INITIALISATION DE LA GRILLE D'ACCUEIL AVEC TOUS LES JOBS ACTIFS ---
     async function initHomeJobsGrid() {
         const homeJobsGrid = document.getElementById('home-jobs-grid');
         if (!homeJobsGrid) return;
@@ -361,9 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
         homeJobsGrid.innerHTML = '';
         const jobsList = await getActiveJobsList();
         
-        // Prendre les 4 premières offres (qui contiennent les épinglées en premier)
+        // Prendre toutes les offres actives
         const activeJobs = jobsList.filter(job => new Date(job.deadlineDate) >= currentDate);
-        const latestJobs = activeJobs.slice(0, 4); 
+        const latestJobs = activeJobs; 
 
         latestJobs.forEach(job => {
             const card = document.createElement('div');
@@ -385,12 +419,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <span class="home-job-score">94% match IA</span>
                 </div>
-                <p class="home-job-desc">${job.description.substring(0, 100)}...</p>
-                <div class="home-job-footer">
+                <p class="home-job-desc">${job.description.substring(0, 120)}...</p>
+                <div class="home-job-footer" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
                     <span class="home-job-loc"><i class="fa-solid fa-location-dot"></i> ${job.location}</span>
                     <span>Limite : ${dateLimitStr}</span>
-                    <span class="home-job-click-action">Voir l'offre <i class="fa-solid fa-arrow-right"></i></span>
                 </div>
+                <button type="button" class="btn-detail-trigger" style="background: var(--primary-color); color: white; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease;">
+                    Voir tous les détails <i class="fa-solid fa-arrow-right"></i>
+                </button>
             `;
             homeJobsGrid.appendChild(card);
         });
@@ -410,8 +446,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (regwallModal) regwallModal.classList.remove('open');
             switchTab('tab-register');
             if (clickedJobTitle) {
-                document.getElementById('jobtitle').value = clickedJobTitle;
-                document.getElementById('jobtitle').focus();
+                // Remplir le premier champ de métier avec le titre cliqué
+                const jobtitle1El = document.getElementById('jobtitle-1');
+                if (jobtitle1El) {
+                    jobtitle1El.value = clickedJobTitle;
+                    jobtitle1El.focus();
+                }
             }
         });
     }
@@ -422,26 +462,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Gestion du clic sur les offres d'emploi de la page d'accueil
-    document.addEventListener('click', (e) => {
+    // Fonction d'ouverture de la modale de détails d'une offre d'emploi
+    async function openJobDetailsModalByTitle(jobTitle) {
+        const jobsList = await getActiveJobsList();
+        const job = jobsList.find(j => j.title === jobTitle);
+        if (!job) return;
+
+        document.getElementById('detail-job-title').textContent = job.title;
+        document.getElementById('detail-job-company').textContent = job.company;
+        document.getElementById('detail-job-location').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${job.location}`;
+        document.getElementById('detail-job-source').innerHTML = `<i class="fa-solid fa-globe"></i> Source : ${job.source}`;
+        
+        let limitStr = "Non spécifiée";
+        if (job.deadlineDate) {
+            const parts = job.deadlineDate.split('-');
+            const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juill.", "août", "sept.", "oct.", "nov.", "déc."];
+            limitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+        }
+        document.getElementById('detail-job-deadline').innerHTML = `<i class="fa-solid fa-calendar-days"></i> Limite : ${limitStr}`;
+        document.getElementById('detail-job-desc').textContent = job.description;
+
+        const btnApply = document.getElementById('btn-detail-apply');
+        if (btnApply) {
+            btnApply.setAttribute('data-job-url', job.url);
+            btnApply.setAttribute('data-job-title', job.title);
+        }
+
+        const detailsModal = document.getElementById('job-details-modal');
+        if (detailsModal) detailsModal.classList.add('open');
+    }
+
+    // Gestion du clic sur les offres d'emploi de la page d'accueil ou de recherche pour les détails
+    document.addEventListener('click', async (e) => {
         const homeCard = e.target.closest('.home-job-card');
-        if (homeCard) {
-            const jobTitle = homeCard.getAttribute('data-job-title');
+        const triggerBtn = e.target.closest('.btn-detail-trigger');
+        
+        if (homeCard || triggerBtn) {
+            const cardElement = homeCard || (triggerBtn ? triggerBtn.closest('.home-job-card') : null);
+            if (!cardElement) return;
+            
+            const jobTitle = cardElement.getAttribute('data-job-title');
             clickedJobTitle = jobTitle;
             
             if (profile) {
-                // Redirection fluide vers la recherche directe
-                switchTab('tab-search');
-                const searchTitleInput = document.getElementById('search-title');
-                if (searchTitleInput) {
-                    searchTitleInput.value = jobTitle;
-                }
-                const btnRunSearch = document.getElementById('btn-run-search');
-                if (btnRunSearch) {
-                    setTimeout(() => {
-                        btnRunSearch.click();
-                    }, 300);
-                }
+                await openJobDetailsModalByTitle(jobTitle);
             } else {
                 if (regwallModal) regwallModal.classList.add('open');
             }
@@ -673,7 +737,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
         const location = document.getElementById('location').value.trim();
-        const jobtitle = document.getElementById('jobtitle').value.trim();
+        
+        const jobtitle1 = document.getElementById('jobtitle-1').value.trim();
+        const jobtitle2 = document.getElementById('jobtitle-2').value.trim();
+        const jobtitle3 = document.getElementById('jobtitle-3').value.trim();
+        const jobtitleArr = [jobtitle1, jobtitle2, jobtitle3].map(t => t.trim()).filter(t => t.length > 0);
+        const jobtitle = jobtitleArr.join(', ');
+        
         const cvtext = document.getElementById('cvtext').value.trim();
         const notifyEmail = document.getElementById('notify-email').checked;
         const notifyWhatsapp = document.getElementById('notify-whatsapp').checked;
@@ -903,99 +973,171 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // 8. Simulated Payments / Subscriptions Handler (Mon Espace)
+    // 8. Mobile Money Payment / Subscriptions Handler (Mon Espace)
     const buyButtons = document.querySelectorAll('.btn-buy-plan');
+    const momoModal = document.getElementById('momo-payment-modal');
+    const btnMomoConfirmWa = document.getElementById('btn-momo-confirm-wa');
+    const btnMomoClose = document.getElementById('btn-momo-close');
 
     buyButtons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const planType = button.getAttribute('data-plan');
-            let planName = '';
-            let daysToGive = 0;
-            let planPrice = '';
+            let planName = 'Premium Mensuel';
+            let planPrice = '5 000 FCFA';
 
-            if (planType === 'monthly') {
-                planName = 'Premium Mensuel';
-                daysToGive = 30;
-                planPrice = '5 000 FCFA';
-            } else if (planType === 'semi-annual') {
+            if (planType === 'semi-annual' || planType === 'semi') {
                 planName = 'Premium 6 Mois';
-                daysToGive = 180;
                 planPrice = '25 000 FCFA';
             } else if (planType === 'annual') {
                 planName = 'Premium Annuel';
-                daysToGive = 365;
                 planPrice = '40 000 FCFA';
             }
 
-            button.disabled = true;
-            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Traitement...';
-
-            setTimeout(async () => {
-                subscriptionStatus = planName;
-                daysRemaining = daysToGive;
-
-                localStorage.setItem('sub_status', subscriptionStatus);
-                localStorage.setItem('sub_days', daysRemaining.toString());
-
-                if (profile) {
-                    profile.subscriptionStatus = subscriptionStatus;
-                    profile.subscriptionDaysRemaining = daysRemaining;
-                    localStorage.setItem('user_profile', JSON.stringify(profile));
-                }
-
-                // SYNCHRONISATION SUPABASE FORFAIT
-                if (supabase && profile) {
-                    try {
-                        const { error } = await supabase.from('users').update({
-                            subscription_status: subscriptionStatus,
-                            subscription_days_remaining: daysRemaining
-                        }).eq('id', profile.id);
-                        if (error) console.error("Supabase update error:", error);
-                    } catch (err) {
-                        console.warn("⚠️ Synchro forfait Supabase échouée.", err);
-                    }
-                }
-
-                updateGlobalUI();
-                showToast(`Paiement de ${planPrice} validé ! Abonnement ${planName} activé.`, "success");
-
-                button.disabled = false;
-                if (planType === 'monthly') {
-                    button.textContent = "S'abonner (5 000 FCFA)";
-                } else if (planType === 'semi-annual') {
-                    button.textContent = "S'abonner (25 000 FCFA)";
-                } else if (planType === 'annual') {
-                    button.textContent = "S'abonner (40 000 FCFA)";
-                }
-
-                // Force refresh home jobs grid
-                initHomeJobsGrid();
-
-                const currentSearchJobs = document.querySelectorAll('#search-jobs-list .job-card-wrapper');
-                if (currentSearchJobs.length > 0) {
-                    btnRunSearch.click();
-                }
-                
-                if (profile) {
-                    const registerActiveTab = document.getElementById('tab-register');
-                    if (registerActiveTab.classList.contains('active')) {
-                        const activeResults = document.getElementById('register-results-section');
-                        if (!activeResults.classList.contains('hidden')) {
-                            document.getElementById('profile-form').dispatchEvent(new Event('submit'));
-                        }
-                    }
-                }
-
-                searchJobsList.classList.remove('blurred-active');
-                searchPaywall.classList.add('hidden');
-
+            if (!profile) {
+                showToast("Veuillez d'abord vous inscrire gratuitement avant de choisir un forfait Premium !", "error");
                 setTimeout(() => {
-                    switchTab('tab-search');
-                }, 1000);
+                    switchTab('tab-register');
+                }, 1200);
+                return;
+            }
 
-            }, 1500);
+            // Mettre à jour les textes de la modale MoMo
+            document.getElementById('momo-plan-name').textContent = planName;
+            document.getElementById('momo-plan-price').textContent = planPrice;
+
+            // Ouvrir la modale MoMo
+            if (momoModal) momoModal.classList.add('open');
+
+            // Enregistrer la demande sur Supabase en changeant le statut à "Demande Premium"
+            if (supabase && profile) {
+                try {
+                    await supabase.from('users').update({
+                        subscription_status: `Demande ${planName}`
+                    }).eq('id', profile.id);
+                    console.log("⚡ Demande d'abonnement enregistrée dans Supabase.");
+                } catch (err) {
+                    console.warn("⚠️ Impossible d'enregistrer la demande sur Supabase :", err);
+                }
+            }
         });
     });
+
+    if (btnMomoConfirmWa) {
+        btnMomoConfirmWa.addEventListener('click', () => {
+            const planName = document.getElementById('momo-plan-name').textContent;
+            const planPrice = document.getElementById('momo-plan-price').textContent;
+            
+            let name = "Non renseigné";
+            let phone = "Non renseigné";
+            let email = "Non renseigné";
+            if (profile) {
+                name = profile.fullname;
+                phone = profile.phone || "";
+                email = profile.email || "";
+            }
+            
+            const message = `Bonjour carréemploie, je suis ${name} (Tél: ${phone}, E-mail: ${email}). Je souhaite m'abonner au Forfait Premium "${planName}" (${planPrice}). Merci de me contacter pour valider mon paiement Mobile Money.`;
+            const waUrl = `https://wa.me/22656911674?text=${encodeURIComponent(message)}`;
+            
+            // Ouvrir WhatsApp dans un nouvel onglet
+            window.open(waUrl, '_blank');
+            
+            // Envoyer un mail de notification de commande à l'administrateur
+            const mailtoUrl = `mailto:alfredkafando@gmail.com?subject=Demande Premium carréemploie - ${name}&body=${encodeURIComponent(message)}`;
+            setTimeout(() => {
+                window.open(mailtoUrl, '_blank');
+            }, 800);
+
+            // Fermer la modale MoMo
+            if (momoModal) momoModal.classList.remove('open');
+            showToast("Demande envoyée ! Nous allons vous contacter par appel pour valider votre paiement.", "success");
+        });
+    }
+
+    if (btnMomoClose) {
+        btnMomoClose.addEventListener('click', () => {
+            if (momoModal) momoModal.classList.remove('open');
+        });
+    }
+
+    // Gestionnaires de fermeture pour la modale Détails
+    const btnCloseDetails = document.getElementById('btn-close-details');
+    const btnDetailCancel = document.getElementById('btn-detail-cancel');
+    const detailsModal = document.getElementById('job-details-modal');
+
+    if (btnCloseDetails) {
+        btnCloseDetails.addEventListener('click', () => {
+            if (detailsModal) detailsModal.classList.remove('open');
+        });
+    }
+    if (btnDetailCancel) {
+        btnDetailCancel.addEventListener('click', () => {
+            if (detailsModal) detailsModal.classList.remove('open');
+        });
+    }
+
+    // Écouteur pour le clic sur le bouton de postulation de la modale détails
+    const btnDetailApply = document.getElementById('btn-detail-apply');
+    if (btnDetailApply) {
+        btnDetailApply.addEventListener('click', async () => {
+            const jobUrl = btnDetailApply.getAttribute('data-job-url');
+            const jobTitle = btnDetailApply.getAttribute('data-job-title');
+            
+            if (detailsModal) detailsModal.classList.remove('open');
+
+            if (daysRemaining <= 0) {
+                showToast("Forfait Premium requis pour recevoir les coordonnées de l'offre !", "error");
+                setTimeout(() => {
+                    switchTab('tab-profile');
+                    const pricingSection = document.getElementById('pricing-section');
+                    if (pricingSection) {
+                        pricingSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }, 1000);
+                return;
+            }
+
+            btnDetailApply.disabled = true;
+            const originalText = btnDetailApply.innerHTML;
+            btnDetailApply.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi en cours...';
+
+            // Enregistrer la notification dans Supabase si connecté
+            if (supabase && profile) {
+                try {
+                    const jobsList = await getActiveJobsList();
+                    const jobMatch = jobsList.find(j => j.url === jobUrl);
+                    if (jobMatch) {
+                        const notifId = `notif_${profile.id}_${jobMatch.id}_${Date.now()}`;
+                        await supabase.from('notifications').insert({
+                            id: notifId,
+                            user_id: profile.id,
+                            job_id: jobMatch.id,
+                            score: 95,
+                            sent_at: new Date().toISOString()
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Synchro notif Supabase échouée:", err);
+                }
+            }
+
+            // Simuler l'envoi du lien et rediriger vers WhatsApp/Email
+            setTimeout(() => {
+                btnDetailApply.disabled = false;
+                btnDetailApply.innerHTML = originalText;
+                showToast(`Coordonnées de l'offre envoyées avec succès !`, "success");
+                
+                if (profile.notifyWhatsapp && profile.phone) {
+                    const message = `Bonjour ${profile.fullname} ! Voici le lien de candidature pour l'offre "${jobTitle}" : ${jobUrl}`;
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                } else if (profile.notifyEmail && profile.email) {
+                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Lien de candidature - " + jobTitle)}&body=${encodeURIComponent("Bonjour " + profile.fullname + ",\n\nVoici le lien de candidature pour l'offre de " + jobTitle + " :\n\n" + jobUrl + "\n\nBonne chance !\nL'équipe carréemploie")}`;
+                    window.open(mailtoUrl, '_blank');
+                }
+            }, 1000);
+        });
+    }
 
 
     // --- 9. CHARGEMENT ASYNCHRONE INITIAL DES DONNÉES SUPABASE CANDIDAT ---
