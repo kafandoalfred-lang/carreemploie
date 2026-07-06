@@ -397,18 +397,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // Global variable to hold clicked job title for prefilling
+    let clickedJobTitle = "";
+
+    // DOM references for RegWall modal
+    const regwallModal = document.getElementById('regwall-modal');
+    const btnRegwallConfirm = document.getElementById('btn-regwall-confirm');
+    const btnRegwallClose = document.getElementById('btn-regwall-close');
+
+    if (btnRegwallConfirm) {
+        btnRegwallConfirm.addEventListener('click', () => {
+            if (regwallModal) regwallModal.classList.remove('open');
+            switchTab('tab-register');
+            if (clickedJobTitle) {
+                document.getElementById('jobtitle').value = clickedJobTitle;
+                document.getElementById('jobtitle').focus();
+            }
+        });
+    }
+
+    if (btnRegwallClose) {
+        btnRegwallClose.addEventListener('click', () => {
+            if (regwallModal) regwallModal.classList.remove('open');
+        });
+    }
+
     // Gestion du clic sur les offres d'emploi de la page d'accueil
     document.addEventListener('click', (e) => {
         const homeCard = e.target.closest('.home-job-card');
         if (homeCard) {
             const jobTitle = homeCard.getAttribute('data-job-title');
-            showToast(`Vous voulez postuler à l'offre "${jobTitle}" ? Configurez votre alerte IA pour recevoir le lien de candidature !`, "success");
+            clickedJobTitle = jobTitle;
             
-            setTimeout(() => {
+            if (profile) {
                 switchTab('tab-register');
                 document.getElementById('jobtitle').value = jobTitle;
                 document.getElementById('jobtitle').focus();
-            }, 1200);
+            } else {
+                if (regwallModal) regwallModal.classList.add('open');
+            }
+        }
+        
+        // Gérer le clic sur le bouton d'inscription depuis les cartes
+        const btnRegwallTriggerCard = e.target.closest('.btn-regwall-trigger-card');
+        if (btnRegwallTriggerCard) {
+            const jobTitle = btnRegwallTriggerCard.getAttribute('data-job-title');
+            clickedJobTitle = jobTitle;
+            if (regwallModal) regwallModal.classList.add('open');
         }
     });
 
@@ -419,12 +454,22 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = match.job.isPinned ? "job-card-wrapper job-pinned" : "job-card-wrapper";
         
         let sendBtnHtml = "";
+        const isUserRegistered = profile !== null;
+
         if (showSendButton) {
-            sendBtnHtml = `
-                <button type="button" class="btn-send-link" data-job-url="${match.job.url}" data-job-title="${match.job.title}">
-                    <i class="fa-solid fa-paper-plane"></i> Recevoir le lien pour postuler par WhatsApp ou Email
-                </button>
-            `;
+            if (isUserRegistered) {
+                sendBtnHtml = `
+                    <button type="button" class="btn-send-link" data-job-url="${match.job.url}" data-job-title="${match.job.title}">
+                        <i class="fa-solid fa-paper-plane"></i> Recevoir le lien pour postuler par WhatsApp ou Email
+                    </button>
+                `;
+            } else {
+                sendBtnHtml = `
+                    <button type="button" class="btn-send-link btn-regwall-trigger-card" data-job-title="${match.job.title}" style="background: var(--primary-color) !important; color: white !important; cursor: pointer;">
+                        <i class="fa-solid fa-user-plus"></i> S'inscrire gratuitement pour postuler
+                    </button>
+                `;
+            }
         }
 
         let dateLimitStr = "Non spécifiée";
@@ -434,9 +479,13 @@ document.addEventListener('DOMContentLoaded', () => {
             dateLimitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
         }
 
-        const sourceDisplayHtml = daysRemaining > 0 
+        const sourceDisplayHtml = isUserRegistered 
             ? `<span><i class="fa-solid fa-globe"></i> ${match.job.source}</span>`
-            : `<span><i class="fa-solid fa-lock text-gold"></i> Source : Masquée (Forfait Premium requis)</span>`;
+            : `<span><i class="fa-solid fa-lock text-gold"></i> Source : Masquée (Inscription requise)</span>`;
+
+        const jobDescriptionHtml = isUserRegistered
+            ? match.job.description
+            : match.job.description.substring(0, 150) + `... <strong style="color: var(--primary-color); cursor: pointer;" class="btn-regwall-trigger-card" data-job-title="${match.job.title}">(S'inscrire pour voir tous les détails)</strong>`;
 
         card.innerHTML = `
             <div class="job-card-header">
@@ -447,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="score-badge">${match.score}% match IA</span>
             </div>
             <div class="job-card-details">
-                <p>${match.job.description}</p>
+                <p>${jobDescriptionHtml}</p>
             </div>
             <div class="matched-job-exp" style="margin-top: 15px;">
                 <strong>Analyse de l'IA (en français simple) :</strong> ${match.explanation}
