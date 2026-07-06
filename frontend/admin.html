@@ -241,11 +241,17 @@
         function handleLogin() {
             const enteredCode = passcodeInput.value.trim();
             if (enteredCode === "admin2026") {
-                sessionStorage.setItem('admin_auth', 'true');
                 authErrorMsg.style.display = 'none';
                 lockScreen.style.display = 'none';
                 adminPanel.style.display = 'block';
                 showToast("Accès autorisé ! Chargement du tableau de bord...", "success");
+                
+                try {
+                    sessionStorage.setItem('admin_auth', 'true');
+                } catch (e) {
+                    console.warn("sessionStorage non disponible:", e);
+                }
+                
                 loadDashboardData();
             } else {
                 authErrorMsg.style.display = 'block';
@@ -255,7 +261,11 @@
         }
 
         btnLogoutAdmin.addEventListener('click', () => {
-            sessionStorage.removeItem('admin_auth');
+            try {
+                sessionStorage.removeItem('admin_auth');
+            } catch (e) {
+                console.warn(e);
+            }
             lockScreen.style.display = 'block';
             adminPanel.style.display = 'none';
             passcodeInput.value = '';
@@ -264,7 +274,14 @@
 
         // Check active session on load
         window.addEventListener('DOMContentLoaded', () => {
-            if (sessionStorage.getItem('admin_auth') === 'true') {
+            let isAuthenticated = false;
+            try {
+                isAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
+            } catch (e) {
+                console.warn(e);
+            }
+
+            if (isAuthenticated) {
                 lockScreen.style.display = 'none';
                 adminPanel.style.display = 'block';
                 loadDashboardData();
