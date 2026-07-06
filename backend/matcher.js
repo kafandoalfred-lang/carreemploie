@@ -119,9 +119,19 @@ const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER || ""; // ex: 'whatsapp:+14155238886' ou '+1234567890'
 
-function sendRealEmail(user, job, result) {
+function sendRealEmail(user, job, result, remainingAlerts = null) {
   if (!RESEND_API_KEY) {
     return Promise.resolve(false);
+  }
+
+  let alertWarningHtml = "";
+  if (remainingAlerts !== null) {
+    alertWarningHtml = `
+      <div style="background-color: #fffbeb; border: 1px solid #fef3c7; color: #b45309; padding: 15px; border-radius: 8px; margin-top: 25px; font-size: 0.95rem; font-weight: bold; text-align: center; border-left: 4px solid #f59e0b;">
+        ⚠️ Attention : Il vous reste uniquement ${remainingAlerts} alerte(s) gratuite(s) sur 3.<br>
+        <span style="font-weight: normal; font-size: 0.85rem; color: #78350f;">Pour continuer à recevoir toutes les offres d'emploi compatibles par Email/WhatsApp sans interruption, passez à la version Premium !</span>
+      </div>
+    `;
   }
 
   const payload = JSON.stringify({
@@ -144,6 +154,7 @@ function sendRealEmail(user, job, result) {
         <p style="margin-top: 25px;">
           <a href="${job.url}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Postuler à l'offre</a>
         </p>
+        ${alertWarningHtml}
         <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
         <p style="font-size: 11px; color: #999;">Cet e-mail a été généré automatiquement par carréemploie.</p>
       </div>
@@ -186,7 +197,7 @@ function sendRealEmail(user, job, result) {
   });
 }
 
-function sendRealTwilioMessage(user, job, result) {
+function sendRealTwilioMessage(user, job, result, remainingAlerts = null) {
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM_NUMBER) {
     return Promise.resolve(false);
   }
@@ -195,7 +206,11 @@ function sendRealTwilioMessage(user, job, result) {
   const cleanPhone = user.phone.replace(/[^0-9+]/g, '');
   const toValue = isWhatsApp ? `whatsapp:${cleanPhone}` : cleanPhone;
   
-  const messageText = `carréemploie Alert 🌟: Bonjour ${user.fullname}, un travail de "${job.title}" est disponible à ${job.location} ! Score IA : ${result.score}%. Raison: ${result.explanation} Voir l'offre : ${job.url}`;
+  let messageText = `carréemploie Alert 🌟: Bonjour ${user.fullname}, un travail de "${job.title}" est disponible à ${job.location} ! Score IA : ${result.score}%. Raison: ${result.explanation} Voir l'offre : ${job.url}`;
+
+  if (remainingAlerts !== null) {
+    messageText += `\n\n⚠️ Il vous reste ${remainingAlerts} alerte(s) gratuite(s) sur 3. Passez Premium pour recevoir toutes les alertes en continu !`;
+  }
 
   const postData = querystring.stringify({
     To: toValue,
@@ -243,7 +258,7 @@ function sendRealTwilioMessage(user, job, result) {
 }
 
 // Envoyer la notification
-async function sendNotification(user, job, result) {
+async function sendNotification(user, job, result, remainingAlerts = null) {
   const notificationId = `notif_${user.id}_${job.id}_${Date.now()}`;
   let sentViaResend = false;
   let sentViaTwilio = false;
@@ -252,23 +267,29 @@ async function sendNotification(user, job, result) {
   
   if (user.notifyEmail) {
     if (RESEND_API_KEY) {
-      sentViaResend = await sendRealEmail(user, job, result);
+      sentViaResend = await sendRealEmail(user, job, result, remainingAlerts);
     } else {
       console.log(`✉️ [EMAIL SIMULÉ VIA RESEND] Envoyé à: ${user.email}`);
       console.log(`   Sujet: Emploi trouvé : ${job.title} - ${job.company} (${result.score}% match IA)`);
       console.log(`   Contenu: "Bonjour ${user.fullname}, carréemploie a trouvé un job idéal : ${job.title} chez ${job.company}.`);
       console.log(`   Pourquoi ? ${result.explanation}`);
       console.log(`   Lien de l'offre: ${job.url}"`);
+      if (remainingAlerts !== null) {
+        console.log(`   ⚠️ [TRIAL NOTIF] Il reste ${remainingAlerts} alertes gratuites sur 3.`);
+      }
       sentViaResend = true;
     }
   }
 
   if (user.notifyWhatsapp && user.phone) {
     if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM_NUMBER) {
-      sentViaTwilio = await sendRealTwilioMessage(user, job, result);
+      sentViaTwilio = await sendRealTwilioMessage(user, job, result, remainingAlerts);
     } else {
       console.log(`💬 [WHATSAPP SIMULÉ VIA TWILIO] Envoyé à: ${user.phone}`);
       console.log(`   Message: "carréemploie Alert 🌟: Bonjour ${user.fullname}, un travail de ${job.title} est trouvé à ${job.location} ! Score IA : ${result.score}%. Raison: ${result.explanation} Voir l'offre : ${job.url}"`);
+      if (remainingAlerts !== null) {
+        console.log(`   ⚠️ [TRIAL NOTIF] Il reste ${remainingAlerts} alertes gratuites sur 3.`);
+      }
       sentViaTwilio = true;
     }
   }
@@ -509,7 +530,8 @@ async function runMatcher() {
 
         if (result.match && result.score >= 70) {
           console.log(`   ✅ MATCH VALIDÉ par l'IA (${result.score}%)`);
-          const notif = await sendNotification(user, job, result);
+          const remainingAlerts = isFree ? Math.max(0, 3 - (currentSentInRun + 1)) : null;
+          const notif = await sendNotification(user, job, result, remainingAlerts);
           notifications.push(notif);
           
           // Sauvegarde en ligne Supabase si active

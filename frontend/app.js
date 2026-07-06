@@ -823,6 +823,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (daysRemaining <= 0) {
+                showToast("Forfait Premium requis pour recevoir les coordonnées de l'offre !", "error");
+                setTimeout(() => {
+                    switchTab('tab-profile');
+                    const pricingSection = document.getElementById('pricing-section');
+                    if (pricingSection) {
+                        pricingSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }, 1000);
+                return;
+            }
+
             btnSend.disabled = true;
             btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi en cours...';
 
