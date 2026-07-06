@@ -738,10 +738,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>Activer mes alertes automatiques</span><i class="fa-solid fa-arrow-right"></i>';
-            showToast("Bravo ! Votre profil est enregistré.", "success");
+            submitBtn.innerHTML = '<span>Terminer mon inscription gratuite</span><i class="fa-solid fa-arrow-right"></i>';
+            showToast("Inscription gratuite terminée ! Déblocage complet des offres...", "success");
             
             updateGlobalUI();
+
+            // Redirection fluide pour afficher immédiatement les détails débloqués de l'offre
+            const targetTitle = clickedJobTitle || profile.jobtitle;
+            setTimeout(() => {
+                switchTab('tab-search');
+                const searchTitleInput = document.getElementById('search-title');
+                if (searchTitleInput) {
+                    searchTitleInput.value = targetTitle;
+                }
+                const btnRunSearch = document.getElementById('btn-run-search');
+                if (btnRunSearch) {
+                    btnRunSearch.click();
+                }
+            }, 800);
 
             registerJobsList.innerHTML = '';
             const matches = [];
