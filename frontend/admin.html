@@ -447,9 +447,9 @@
                         if (aPinned && !bPinned) return -1;
                         if (!aPinned && bPinned) return 1;
                         
-                        if (!a.deadline_date) return 1;
-                        if (!b.deadline_date) return -1;
-                        return new Date(a.deadline_date) - new Date(b.deadline_date);
+                        const aTime = a.scraped_at ? new Date(a.scraped_at).getTime() : 0;
+                        const bTime = b.scraped_at ? new Date(b.scraped_at).getTime() : 0;
+                        return bTime - aTime;
                     });
                 }
                 

@@ -300,8 +300,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                 source: j.source,
                                 url: j.url,
                                 deadlineDate: j.deadline_date,
-                                isPinned: j.is_pinned || false
-                            })).sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+                                isPinned: j.is_pinned || false,
+                                scrapedAt: j.scraped_at || ""
+                            })).sort((a, b) => {
+                                if (a.isPinned && !b.isPinned) return -1;
+                                if (!a.isPinned && b.isPinned) return 1;
+                                const aTime = a.scrapedAt ? new Date(a.scrapedAt).getTime() : 0;
+                                const bTime = b.scrapedAt ? new Date(b.scrapedAt).getTime() : 0;
+                                return bTime - aTime;
+                            });
                         }
                     }
 
@@ -314,8 +321,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         source: j.source,
                         url: j.url,
                         deadlineDate: j.deadline_date,
-                        isPinned: j.is_pinned || false
-                    })).sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+                        isPinned: j.is_pinned || false,
+                        scrapedAt: j.scraped_at || ""
+                    })).sort((a, b) => {
+                        if (a.isPinned && !b.isPinned) return -1;
+                        if (!a.isPinned && b.isPinned) return 1;
+                        const aTime = a.scrapedAt ? new Date(a.scrapedAt).getTime() : 0;
+                        const bTime = b.scrapedAt ? new Date(b.scrapedAt).getTime() : 0;
+                        return bTime - aTime;
+                    });
                 } else if (data && data.length === 0) {
                     console.log("🌱 Supabase vide. Seeding automatique des offres d'emploi...");
                     const jobsToSeed = SIMULATED_LOCAL_JOBS.map(j => ({
