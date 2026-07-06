@@ -435,11 +435,23 @@
                 // Fetch Jobs list
                 const { data: jobs, error: jobsError } = await supabaseClient
                     .from('jobs')
-                    .select('*')
-                    .order('is_pinned', { ascending: false })
-                    .order('deadline_date', { ascending: true });
+                    .select('*');
                 
                 if (jobsError) throw jobsError;
+                
+                // Tri défensif en JavaScript (évite le crash si la colonne is_pinned n'existe pas encore)
+                if (jobs && jobs.length > 0) {
+                    jobs.sort((a, b) => {
+                        const aPinned = a.is_pinned === true;
+                        const bPinned = b.is_pinned === true;
+                        if (aPinned && !bPinned) return -1;
+                        if (!aPinned && bPinned) return 1;
+                        
+                        if (!a.deadline_date) return 1;
+                        if (!b.deadline_date) return -1;
+                        return new Date(a.deadline_date) - new Date(b.deadline_date);
+                    });
+                }
                 
                 renderJobsTable(jobs);
 
