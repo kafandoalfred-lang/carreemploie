@@ -439,8 +439,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM references for RegWall modal
     const regwallModal = document.getElementById('regwall-modal');
     const regwallProfileForm = document.getElementById('regwall-profile-form');
-    const btnRegwallClose = document.getElementById('btn-regwall-close');
+    const regwallRecoverForm = document.getElementById('regwall-recover-form');
 
+    const regRegisterView = document.getElementById('regwall-register-view');
+    const regRecoverView = document.getElementById('regwall-recover-view');
+
+    const linkGotoRecover = document.getElementById('link-goto-recover');
+    const linkGotoRegister = document.getElementById('link-goto-register');
+
+    // Navigation entre Inscription et Récupération
+    if (linkGotoRecover) {
+        linkGotoRecover.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (regRegisterView) regRegisterView.classList.add('hidden');
+            if (regRecoverView) regRecoverView.classList.remove('hidden');
+        });
+    }
+
+    if (linkGotoRegister) {
+        linkGotoRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (regRecoverView) regRecoverView.classList.add('hidden');
+            if (regRegisterView) regRegisterView.classList.remove('hidden');
+        });
+    }
+
+    // Fermeture de la modale Regwall (pour tous les boutons annuler/plus tard)
+    const closeRegwallButtons = document.querySelectorAll('.btn-regwall-close-btn');
+    closeRegwallButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (regwallModal) regwallModal.classList.remove('open');
+            // Réinitialiser à la vue inscription par défaut pour la prochaine ouverture
+            if (regRecoverView) regRecoverView.classList.add('hidden');
+            if (regRegisterView) regRegisterView.classList.remove('hidden');
+        });
+    });
+
+    // Inscription gratuite formulaire
     if (regwallProfileForm) {
         regwallProfileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -455,6 +490,51 @@ document.addEventListener('DOMContentLoaded', () => {
             const jobtitle3 = document.getElementById('reg-job-3').value.trim();
             const jobtitleArr = [jobtitle1, jobtitle2, jobtitle3].map(t => t.trim()).filter(t => t.length > 0);
             const jobtitle = jobtitleArr.join(', ');
+
+            // Anti-doublon : Recherche si un compte existe déjà avec cet e-mail ou ce numéro
+            if (supabase) {
+                try {
+                    const { data: existingUsers, error: checkError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .or(`email.eq.${email},phone.eq.${phone}`);
+                    
+                    if (existingUsers && existingUsers.length > 0) {
+                        const matchedUser = existingUsers[0];
+                        profile = {
+                            id: matchedUser.id,
+                            fullname: matchedUser.fullname,
+                            email: matchedUser.email,
+                            phone: matchedUser.phone,
+                            location: matchedUser.location,
+                            jobtitle: matchedUser.jobtitle,
+                            cvtext: matchedUser.cvtext,
+                            notifyEmail: matchedUser.notify_email,
+                            notifyWhatsapp: matchedUser.notify_whatsapp,
+                            subscriptionStatus: matchedUser.subscription_status,
+                            subscriptionDaysRemaining: matchedUser.subscription_days_remaining,
+                            createdAt: matchedUser.created_at
+                        };
+                        subscriptionStatus = matchedUser.subscription_status;
+                        daysRemaining = matchedUser.subscription_days_remaining;
+
+                        localStorage.setItem('user_profile', JSON.stringify(profile));
+                        localStorage.setItem('user_id', profile.id);
+                        localStorage.setItem('sub_status', subscriptionStatus);
+                        localStorage.setItem('sub_days', daysRemaining.toString());
+
+                        updateGlobalUI();
+                        showToast(`Ravi de vous revoir ${profile.fullname} ! Votre compte a été synchronisé.`, "success");
+                        if (regwallModal) regwallModal.classList.remove('open');
+                        if (clickedJobTitle) {
+                            setTimeout(() => { openJobDetailsModalByTitle(clickedJobTitle); }, 400);
+                        }
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("Vérification doublon échouée :", err);
+                }
+            }
 
             profile = {
                 id: "user_" + Date.now(),
@@ -511,9 +591,82 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (btnRegwallClose) {
-        btnRegwallClose.addEventListener('click', () => {
-            if (regwallModal) regwallModal.classList.remove('open');
+    // Récupération de profil formulaire
+    if (regwallRecoverForm) {
+        regwallRecoverForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const identity = document.getElementById('recover-identity').value.trim();
+
+            if (!supabase) {
+                showToast("Service indisponible en mode local.", "error");
+                return;
+            }
+
+            const btnSubmit = document.getElementById('btn-recover-submit');
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Recherche...';
+            }
+
+            try {
+                // Recherche par e-mail ou téléphone exact sur Supabase
+                const { data: matchedUsers, error: matchError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .or(`email.eq.${identity},phone.eq.${identity}`);
+
+                if (matchedUsers && matchedUsers.length > 0) {
+                    const matchedUser = matchedUsers[0];
+                    profile = {
+                        id: matchedUser.id,
+                        fullname: matchedUser.fullname,
+                        email: matchedUser.email,
+                        phone: matchedUser.phone,
+                        location: matchedUser.location,
+                        jobtitle: matchedUser.jobtitle,
+                        cvtext: matchedUser.cvtext,
+                        notifyEmail: matchedUser.notify_email,
+                        notifyWhatsapp: matchedUser.notify_whatsapp,
+                        subscriptionStatus: matchedUser.subscription_status,
+                        subscriptionDaysRemaining: matchedUser.subscription_days_remaining,
+                        createdAt: matchedUser.created_at
+                    };
+                    subscriptionStatus = matchedUser.subscription_status;
+                    daysRemaining = matchedUser.subscription_days_remaining;
+
+                    localStorage.setItem('user_profile', JSON.stringify(profile));
+                    localStorage.setItem('user_id', profile.id);
+                    localStorage.setItem('sub_status', subscriptionStatus);
+                    localStorage.setItem('sub_days', daysRemaining.toString());
+
+                    updateGlobalUI();
+                    showToast(`Ravi de vous revoir ${profile.fullname} ! Votre profil a été récupéré.`, "success");
+
+                    if (regwallModal) regwallModal.classList.remove('open');
+                    
+                    // Réinitialiser à la vue inscription par défaut pour la prochaine fois
+                    if (regRecoverView) regRecoverView.classList.add('hidden');
+                    if (regRegisterView) regRegisterView.classList.remove('hidden');
+
+                    // Ouvrir directement les détails de l'offre cliquée
+                    if (clickedJobTitle) {
+                        setTimeout(() => {
+                            openJobDetailsModalByTitle(clickedJobTitle);
+                        }, 400);
+                    }
+                } else {
+                    showToast("Aucun compte trouvé avec cet e-mail ou numéro.", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Erreur de communication avec la base de données.", "error");
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = 'Récupérer mon profil';
+                }
+            }
         });
     }
 

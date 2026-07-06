@@ -390,56 +390,96 @@
         <p>&copy; 2026 carréemploie. Tous droits réservés.</p>
     </footer>
 
-    <!-- RegWall Modal (Inscription Gratuite Directe) -->
+    <!-- RegWall Modal (Inscription Gratuite / Récupération de Profil) -->
     <div id="regwall-modal" class="admin-modal">
         <div class="admin-modal-content" style="max-width: 500px; padding: 25px; text-align: left; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; max-height: 90vh; overflow-y: auto;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 10px;">
-                    <i class="fa-solid fa-user-plus"></i>
+            
+            <!-- VUE 1 : INSCRIPTION GRATUITE -->
+            <div id="regwall-register-view">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 10px;">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 0 0 5px 0;">Inscription Gratuite</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">Inscris-toi gratuitement pour débloquer tous les détails de cette offre et postuler !</p>
                 </div>
-                <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 0 0 5px 0;">Inscription Gratuite</h3>
-                <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">Inscris-toi gratuitement pour débloquer tous les détails de cette offre et postuler !</p>
+
+                <form id="regwall-profile-form" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-user"></i> Nom & Prénom</label>
+                        <input type="text" id="reg-fullname-free" placeholder="Ex: Adama Sawadogo" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
+                        <input type="email" id="reg-email-free" placeholder="Ex: adama.sawadogo@gmail.com" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-phone"></i> Numéro WhatsApp (avec indicatif pays)</label>
+                        <input type="text" id="reg-phone-free" placeholder="Ex: +226 70 00 00 00" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-location-dot"></i> Votre Ville / Localité</label>
+                        <input type="text" id="reg-location-free" placeholder="Ex: Ouagadougou" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-briefcase"></i> Quels métiers recherchez-vous ? (Jusqu'à 3 métiers)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                            <input type="text" id="reg-job-1" placeholder="Métier 1" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                            <input type="text" id="reg-job-2" placeholder="Métier 2 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                            <input type="text" id="reg-job-3" placeholder="Métier 3 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit" class="btn-search" style="flex: 1; font-weight: 600; padding: 12px;">
+                            Terminer mon inscription gratuite
+                        </button>
+                        <button type="button" class="btn-regwall-close-btn btn-admin-cancel" style="padding: 12px 15px;">
+                            Plus tard
+                        </button>
+                    </div>
+                </form>
+
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="#" id="link-goto-recover" style="color: var(--primary-color); font-size: 0.9rem; text-decoration: none; font-weight: 600;">Déjà inscrit ? Récupérer mon profil</a>
+                </div>
             </div>
 
-            <form id="regwall-profile-form" style="display: flex; flex-direction: column; gap: 12px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-user"></i> Nom & Prénom</label>
-                    <input type="text" id="reg-fullname-free" placeholder="Ex: Adama Sawadogo" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
-                </div>
-
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
-                    <input type="email" id="reg-email-free" placeholder="Ex: adama.sawadogo@gmail.com" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
-                </div>
-
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-phone"></i> Numéro WhatsApp (avec indicatif pays)</label>
-                    <input type="text" id="reg-phone-free" placeholder="Ex: +226 70 00 00 00" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
-                </div>
-
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-location-dot"></i> Votre Ville / Localité</label>
-                    <input type="text" id="reg-location-free" placeholder="Ex: Ouagadougou" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
-                </div>
-
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-briefcase"></i> Quels métiers recherchez-vous ? (Jusqu'à 3 métiers)</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                        <input type="text" id="reg-job-1" placeholder="Métier 1" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
-                        <input type="text" id="reg-job-2" placeholder="Métier 2 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
-                        <input type="text" id="reg-job-3" placeholder="Métier 3 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+            <!-- VUE 2 : RÉCUPÉRATION DE PROFIL -->
+            <div id="regwall-recover-view" class="hidden">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 10px;">
+                        <i class="fa-solid fa-key"></i>
                     </div>
+                    <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 0 0 5px 0;">Récupérer mon Profil</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">Saisissez vos coordonnées pour reconnecter votre compte sur cet appareil.</p>
                 </div>
 
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" id="btn-regwall-submit" class="btn-search" style="flex: 1; font-weight: 600; padding: 12px;">
-                        Terminer mon inscription gratuite
-                    </button>
-                    <button type="button" id="btn-regwall-close" class="btn-admin-cancel" style="padding: 12px 15px;">
-                        Plus tard
-                    </button>
+                <form id="regwall-recover-form" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-address-card"></i> Email ou Numéro WhatsApp</label>
+                        <input type="text" id="recover-identity" placeholder="Ex: adama.sawadogo@gmail.com ou +226..." required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit" class="btn-search" style="flex: 1; font-weight: 600; padding: 12px;">
+                            Récupérer mon profil
+                        </button>
+                        <button type="button" class="btn-regwall-close-btn btn-admin-cancel" style="padding: 12px 15px;">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="#" id="link-goto-register" style="color: var(--primary-color); font-size: 0.9rem; text-decoration: none; font-weight: 600;"><i class="fa-solid fa-arrow-left"></i> Retour à l'inscription</a>
                 </div>
-            </form>
+            </div>
+
         </div>
     </div>
 
