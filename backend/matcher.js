@@ -39,8 +39,9 @@ function postRequest(url, data) {
 }
 
 // Fonction pour appeler l'API Gemini
+// Fonction pour appeler l'API Gemini
 async function analyzeMatchWithGemini(user, job, apiKey) {
-  const prompt = `Tu es un conseiller en recrutement. Compare le profil du candidat avec l'offre d'emploi ci-dessous.
+  const prompt = `Tu es un conseiller en recrutement chaleureux et dynamique. Compare le profil du candidat avec l'offre d'emploi ci-dessous.
 
 PROFIL DU CANDIDAT:
 Nom: ${user.fullname}
@@ -54,11 +55,12 @@ Entreprise: ${job.company}
 Ville: ${job.location}
 Description: ${job.description}
 
-Détermine si le profil correspond à l'offre. Réponds dans un français simple et facile à comprendre. Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown, juste le JSON brut :
+Détermine si le profil correspond à l'offre. Réponds dans un français simple, enthousiaste et facile à comprendre. Rédige une explication vivante, claire et ajoute à la fin une belle phrase de motivation chaleureuse et personnalisée pour encourager le candidat à postuler si la correspondance est bonne.
+Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown, juste le JSON brut :
 {
   "match": true ou false,
   "score": (note sur 100 indiquant le niveau de correspondance),
-  "explanation": "Une explication courte de 2 phrases simples de pourquoi cela correspond ou non, en français facile."
+  "explanation": "Ton analyse encourageante et dynamique (2 ou 3 phrases max) avec une phrase de motivation inspirante à la fin."
 }`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -79,7 +81,7 @@ Détermine si le profil correspond à l'offre. Réponds dans un français simple
   }
 }
 
-// Simulation locale de l'IA (en français simple)
+// Simulation locale de l'IA (en français simple et motivant)
 function mockGeminiAnalysis(user, job) {
   const userText = (user.jobtitle + " " + user.cvtext).toLowerCase();
   const jobText = (job.title + " " + job.description).toLowerCase();
@@ -104,9 +106,9 @@ function mockGeminiAnalysis(user, job) {
 
   let explanation = "";
   if (match) {
-    explanation = `Le profil correspond bien au métier de "${user.jobtitle}". Vos compétences et permis conviennent pour ce poste. La ville de l'emploi est "${job.location}".`;
+    explanation = `Superbe opportunité ! Le poste de "${job.title}" correspond parfaitement à vos souhaits de métier en tant que "${user.jobtitle}". Vos compétences conviennent très bien pour cette offre à "${job.location}". Foncez et postulez sans hésiter, vous avez le profil idéal ! 🌟`;
   } else {
-    explanation = `La correspondance n'est pas idéale. Le poste de "${job.title}" demande des compétences spécifiques que vous n'avez pas notées dans votre profil.`;
+    explanation = `La correspondance n'est pas idéale pour le poste de "${job.title}". Vos métiers de recherche diffèrent des exigences de cette offre. Mais gardez le cap, continuez vos recherches, la bonne offre vous attend ! 💪`;
   }
 
   return { match, score, explanation };
