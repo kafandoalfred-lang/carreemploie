@@ -975,12 +975,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 8. Mobile Money Payment / Subscriptions Handler (Mon Espace)
     const buyButtons = document.querySelectorAll('.btn-buy-plan');
-    const momoModal = document.getElementById('momo-payment-modal');
-    const btnMomoConfirmWa = document.getElementById('btn-momo-confirm-wa');
-    const btnMomoClose = document.getElementById('btn-momo-close');
+    const orderFormContainer = document.getElementById('premium-order-form-container');
+    const premiumRequestForm = document.getElementById('premium-request-form');
+    
+    const premiumSuccessModal = document.getElementById('premium-success-modal');
+    const btnSuccessClose = document.getElementById('btn-success-close');
 
     buyButtons.forEach(button => {
-        button.addEventListener('click', async () => {
+        button.addEventListener('click', () => {
             const planType = button.getAttribute('data-plan');
             let planName = 'Premium Mensuel';
             let planPrice = '5 000 FCFA';
@@ -993,22 +995,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 planPrice = '40 000 FCFA';
             }
 
-            if (!profile) {
-                showToast("Veuillez d'abord vous inscrire gratuitement avant de choisir un forfait Premium !", "error");
-                setTimeout(() => {
-                    switchTab('tab-register');
-                }, 1200);
-                return;
+            // Mettre à jour les informations visuelles du forfait
+            document.getElementById('selected-plan-display').textContent = `${planName} (${planPrice})`;
+            document.getElementById('momo-deposit-price').textContent = planPrice;
+            document.getElementById('req-plan-name').value = planName;
+            document.getElementById('req-plan-price').value = planPrice;
+
+            // Pré-remplissage automatique si le candidat a déjà un compte gratuit
+            const reqFullname = document.getElementById('req-fullname');
+            const reqPhone = document.getElementById('req-phone');
+            const reqEmail = document.getElementById('req-email');
+
+            if (reqFullname) reqFullname.value = profile ? profile.fullname : "";
+            if (reqPhone) reqPhone.value = profile ? (profile.phone || "") : "";
+            if (reqEmail) reqEmail.value = profile ? (profile.email || "") : "";
+
+            // Afficher le formulaire et faire défiler l'écran
+            if (orderFormContainer) {
+                orderFormContainer.classList.remove('hidden');
+                orderFormContainer.scrollIntoView({ behavior: 'smooth' });
             }
+        });
+    });
 
-            // Mettre à jour les textes de la modale MoMo
-            document.getElementById('momo-plan-name').textContent = planName;
-            document.getElementById('momo-plan-price').textContent = planPrice;
+    if (premiumRequestForm) {
+        premiumRequestForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-            // Ouvrir la modale MoMo
-            if (momoModal) momoModal.classList.add('open');
+            const planName = document.getElementById('req-plan-name').value;
+            const planPrice = document.getElementById('req-plan-price').value;
+            const fullname = document.getElementById('req-fullname').value.trim();
+            const phone = document.getElementById('req-phone').value.trim();
+            const email = document.getElementById('req-email').value.trim();
 
-            // Enregistrer la demande sur Supabase en changeant le statut à "Demande Premium"
+            const message = `Bonjour carréemploie, je suis ${fullname} (Tél: ${phone}, E-mail: ${email}). Je souhaite m'abonner au Forfait Premium "${planName}" (${planPrice}). Merci de me contacter pour valider mon paiement Mobile Money.`;
+            
+            // 1. Envoyer la demande par WhatsApp
+            const waUrl = `https://wa.me/22656911674?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank');
+            
+            // 2. Envoyer la demande par Email (mailto) à l'administrateur
+            const mailtoUrl = `mailto:alfredkafando@gmail.com?subject=Demande Activation Premium - ${fullname}&body=${encodeURIComponent(message)}`;
+            setTimeout(() => {
+                window.open(mailtoUrl, '_blank');
+            }, 800);
+
+            // 3. Enregistrer l'état "Demande Premium" dans Supabase si connecté
             if (supabase && profile) {
                 try {
                     await supabase.from('users').update({
@@ -1019,44 +1051,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn("⚠️ Impossible d'enregistrer la demande sur Supabase :", err);
                 }
             }
-        });
-    });
 
-    if (btnMomoConfirmWa) {
-        btnMomoConfirmWa.addEventListener('click', () => {
-            const planName = document.getElementById('momo-plan-name').textContent;
-            const planPrice = document.getElementById('momo-plan-price').textContent;
-            
-            let name = "Non renseigné";
-            let phone = "Non renseigné";
-            let email = "Non renseigné";
-            if (profile) {
-                name = profile.fullname;
-                phone = profile.phone || "";
-                email = profile.email || "";
-            }
-            
-            const message = `Bonjour carréemploie, je suis ${name} (Tél: ${phone}, E-mail: ${email}). Je souhaite m'abonner au Forfait Premium "${planName}" (${planPrice}). Merci de me contacter pour valider mon paiement Mobile Money.`;
-            const waUrl = `https://wa.me/22656911674?text=${encodeURIComponent(message)}`;
-            
-            // Ouvrir WhatsApp dans un nouvel onglet
-            window.open(waUrl, '_blank');
-            
-            // Envoyer un mail de notification de commande à l'administrateur
-            const mailtoUrl = `mailto:alfredkafando@gmail.com?subject=Demande Premium carréemploie - ${name}&body=${encodeURIComponent(message)}`;
-            setTimeout(() => {
-                window.open(mailtoUrl, '_blank');
-            }, 800);
+            // Masquer le formulaire de commande
+            if (orderFormContainer) orderFormContainer.classList.add('hidden');
 
-            // Fermer la modale MoMo
-            if (momoModal) momoModal.classList.remove('open');
-            showToast("Demande envoyée ! Nous allons vous contacter par appel pour valider votre paiement.", "success");
+            // Afficher le pop-up de succès final
+            if (premiumSuccessModal) premiumSuccessModal.classList.add('open');
         });
     }
 
-    if (btnMomoClose) {
-        btnMomoClose.addEventListener('click', () => {
-            if (momoModal) momoModal.classList.remove('open');
+    if (btnSuccessClose) {
+        btnSuccessClose.addEventListener('click', () => {
+            if (premiumSuccessModal) premiumSuccessModal.classList.remove('open');
         });
     }
 
