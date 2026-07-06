@@ -430,9 +430,18 @@ document.addEventListener('DOMContentLoaded', () => {
             clickedJobTitle = jobTitle;
             
             if (profile) {
-                switchTab('tab-register');
-                document.getElementById('jobtitle').value = jobTitle;
-                document.getElementById('jobtitle').focus();
+                // Redirection fluide vers la recherche directe
+                switchTab('tab-search');
+                const searchTitleInput = document.getElementById('search-title');
+                if (searchTitleInput) {
+                    searchTitleInput.value = jobTitle;
+                }
+                const btnRunSearch = document.getElementById('btn-run-search');
+                if (btnRunSearch) {
+                    setTimeout(() => {
+                        btnRunSearch.click();
+                    }, 300);
+                }
             } else {
                 if (regwallModal) regwallModal.classList.add('open');
             }
@@ -465,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             } else {
                 sendBtnHtml = `
-                    <button type="button" class="btn-send-link btn-regwall-trigger-card" data-job-title="${match.job.title}" style="background: var(--primary-color) !important; color: white !important; cursor: pointer;">
+                    <button type="button" class="btn-regwall-trigger-card" data-job-title="${match.job.title}" style="background: var(--primary-color) !important; color: white !important; cursor: pointer; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease;">
                         <i class="fa-solid fa-user-plus"></i> S'inscrire gratuitement pour postuler
                     </button>
                 `;
