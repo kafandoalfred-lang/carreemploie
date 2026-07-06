@@ -204,10 +204,10 @@
         const SUPABASE_URL = "https://yyqybbzlcrvwupfbjwtc.supabase.co";
         const SUPABASE_KEY = "sb_publishable_U9d1sl9kQIbqHH1TX8E2yQ_ZqoWGd28";
         
-        let supabase = null;
+        let supabaseClient = null;
         try {
             if (window.supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 console.log("⚡ Supabase client initialized successfully in admin.html");
             } else {
                 console.warn("⚠️ Supabase library not loaded yet.");
@@ -404,14 +404,14 @@
         // 6. Load Data from Supabase
         async function loadDashboardData() {
             console.log("⚙️ Loading dashboard data from Supabase...");
-            if (!supabase) {
+            if (!supabaseClient) {
                 showToast("Erreur: Supabase n'est pas configuré.", "error");
                 return;
             }
 
             try {
                 // Fetch visitors stats
-                const { count: visitsCount, error: visitsError } = await supabase
+                const { count: visitsCount, error: visitsError } = await supabaseClient
                     .from('analytics')
                     .select('*', { count: 'exact', head: true });
                 
@@ -419,7 +419,7 @@
                 if (statTotalVisits) statTotalVisits.textContent = visitsCount || 0;
 
                 // Fetch Candidates list
-                const { data: users, error: usersError } = await supabase
+                const { data: users, error: usersError } = await supabaseClient
                     .from('users')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -433,7 +433,7 @@
                 renderCandidatesTable(users);
 
                 // Fetch Jobs list
-                const { data: jobs, error: jobsError } = await supabase
+                const { data: jobs, error: jobsError } = await supabaseClient
                     .from('jobs')
                     .select('*')
                     .order('is_pinned', { ascending: false })
@@ -461,7 +461,7 @@
             if (!confirm(confirmMsg)) return;
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('users')
                     .update({ 
                         subscription_status: nextStatus, 
@@ -484,7 +484,7 @@
             }
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('users')
                     .delete()
                     .eq('id', userId);
@@ -500,7 +500,7 @@
 
         async function toggleJobPin(jobId, currentPinned) {
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('jobs')
                     .update({ is_pinned: !currentPinned })
                     .eq('id', jobId);
@@ -520,7 +520,7 @@
             }
 
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('jobs')
                     .delete()
                     .eq('id', jobId);
@@ -536,7 +536,7 @@
 
         async function openEditJobModal(jobId) {
             try {
-                const { data: job, error } = await supabase
+                const { data: job, error } = await supabaseClient
                     .from('jobs')
                     .select('*')
                     .eq('id', jobId)
@@ -692,7 +692,7 @@
 
                 try {
                     if (isEditing && jobId) {
-                        const { error } = await supabase
+                        const { error } = await supabaseClient
                             .from('jobs')
                             .update(payload)
                             .eq('id', jobId);
@@ -701,7 +701,7 @@
                         showToast("Offre d'emploi modifiée avec succès !", "success");
                     } else {
                         const newId = `job_manual_${Date.now()}`;
-                        const { error } = await supabase
+                        const { error } = await supabaseClient
                             .from('jobs')
                             .insert({ id: newId, ...payload });
 
