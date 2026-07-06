@@ -438,20 +438,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // DOM references for RegWall modal
     const regwallModal = document.getElementById('regwall-modal');
-    const btnRegwallConfirm = document.getElementById('btn-regwall-confirm');
+    const regwallProfileForm = document.getElementById('regwall-profile-form');
     const btnRegwallClose = document.getElementById('btn-regwall-close');
 
-    if (btnRegwallConfirm) {
-        btnRegwallConfirm.addEventListener('click', () => {
-            if (regwallModal) regwallModal.classList.remove('open');
-            switchTab('tab-register');
-            if (clickedJobTitle) {
-                // Remplir le premier champ de métier avec le titre cliqué
-                const jobtitle1El = document.getElementById('jobtitle-1');
-                if (jobtitle1El) {
-                    jobtitle1El.value = clickedJobTitle;
-                    jobtitle1El.focus();
+    if (regwallProfileForm) {
+        regwallProfileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fullname = document.getElementById('reg-fullname-free').value.trim();
+            const email = document.getElementById('reg-email-free').value.trim();
+            const phone = document.getElementById('reg-phone-free').value.trim();
+            const location = document.getElementById('reg-location-free').value.trim();
+            
+            const jobtitle1 = document.getElementById('reg-job-1').value.trim();
+            const jobtitle2 = document.getElementById('reg-job-2').value.trim();
+            const jobtitle3 = document.getElementById('reg-job-3').value.trim();
+            const jobtitleArr = [jobtitle1, jobtitle2, jobtitle3].map(t => t.trim()).filter(t => t.length > 0);
+            const jobtitle = jobtitleArr.join(', ');
+
+            profile = {
+                id: "user_" + Date.now(),
+                fullname,
+                email,
+                phone,
+                location,
+                jobtitle,
+                cvtext: "",
+                notifyEmail: true,
+                notifyWhatsapp: true,
+                subscriptionStatus: "Gratuit",
+                subscriptionDaysRemaining: 0,
+                createdAt: new Date().toISOString()
+            };
+
+            localStorage.setItem('user_profile', JSON.stringify(profile));
+            localStorage.setItem('user_id', profile.id);
+
+            // SYNCHRONISATION SUPABASE
+            if (supabase) {
+                try {
+                    const userPayload = {
+                        id: profile.id,
+                        fullname: profile.fullname,
+                        email: profile.email,
+                        phone: profile.phone,
+                        location: profile.location,
+                        jobtitle: profile.jobtitle,
+                        cvtext: profile.cvtext,
+                        notify_email: profile.notifyEmail,
+                        notify_whatsapp: profile.notifyWhatsapp,
+                        subscription_status: profile.subscriptionStatus,
+                        subscription_days_remaining: profile.subscriptionDaysRemaining,
+                        created_at: profile.createdAt
+                    };
+                    await supabase.from('users').upsert(userPayload);
+                } catch (err) {
+                    console.warn("⚠️ Synchro Supabase échouée.", err);
                 }
+            }
+
+            updateGlobalUI();
+            showToast("Inscription gratuite réussie ! Déblocage de l'offre...", "success");
+
+            if (regwallModal) regwallModal.classList.remove('open');
+
+            // Ouvrir directement la modale de détails de l'offre cliquée
+            if (clickedJobTitle) {
+                setTimeout(() => {
+                    openJobDetailsModalByTitle(clickedJobTitle);
+                }, 400);
             }
         });
     }
@@ -507,7 +562,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (profile) {
                 await openJobDetailsModalByTitle(jobTitle);
             } else {
-                if (regwallModal) regwallModal.classList.add('open');
+                if (regwallModal) {
+                    regwallModal.classList.add('open');
+                    const regJob1 = document.getElementById('reg-job-1');
+                    if (regJob1) regJob1.value = jobTitle;
+                }
             }
         }
         
@@ -516,7 +575,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnRegwallTriggerCard) {
             const jobTitle = btnRegwallTriggerCard.getAttribute('data-job-title');
             clickedJobTitle = jobTitle;
-            if (regwallModal) regwallModal.classList.add('open');
+            if (regwallModal) {
+                regwallModal.classList.add('open');
+                const regJob1 = document.getElementById('reg-job-1');
+                if (regJob1) regJob1.value = jobTitle;
+            }
         }
     });
 
@@ -744,19 +807,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const jobtitleArr = [jobtitle1, jobtitle2, jobtitle3].map(t => t.trim()).filter(t => t.length > 0);
         const jobtitle = jobtitleArr.join(', ');
         
-        const cvtext = document.getElementById('cvtext').value.trim();
-        const notifyEmail = document.getElementById('notify-email').checked;
-        const notifyWhatsapp = document.getElementById('notify-whatsapp').checked;
-
-        if (notifyWhatsapp && !phone) {
-            showToast("Veuillez entrer votre numéro WhatsApp pour recevoir les messages !", "error");
-            return;
-        }
-
-        if (!notifyEmail && !notifyWhatsapp) {
-            showToast("Veuillez choisir au moins un moyen d'alerte (Email ou WhatsApp) !", "error");
-            return;
-        }
+        const cvtext = "";
+        const notifyEmail = true;
+        const notifyWhatsapp = true;
 
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span>Analyse de votre profil par l\'IA...</span><i class="fa-solid fa-spinner fa-spin"></i>';

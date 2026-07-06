@@ -244,28 +244,6 @@
                             </div>
                             <input type="hidden" id="jobtitle">
                         </div>
-
-                        <div class="form-group full-width">
-                            <label for="cvtext"><i class="fa-solid fa-file-invoice"></i> Décrivez votre profil (vos compétences, permis, diplômes...)</label>
-                            <textarea id="cvtext" rows="6" placeholder="Décrivez vos expériences de travail, permis de conduire disponibles (ex: Permis C), compétences clés, etc..." required></textarea>
-                        </div>
-
-                        <div class="form-group full-width notification-preferences">
-                            <label><i class="fa-solid fa-bell"></i> Comment souhaitez-vous recevoir vos alertes ?</label>
-                            <div class="checkbox-group">
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="notify-email" checked>
-                                    <span class="custom-checkbox"></span>
-                                    <i class="fa-solid fa-envelope icon"></i> Email (Gratuit)
-                                </label>
-                                
-                                <label class="checkbox-container">
-                                    <input type="checkbox" id="notify-whatsapp">
-                                    <span class="custom-checkbox"></span>
-                                    <i class="fa-brands fa-whatsapp icon"></i> WhatsApp (Conseillé)
-                                </label>
-                            </div>
-                        </div>
                     </div>
 
                     <button type="submit" class="btn-submit" id="submit-btn">
@@ -412,24 +390,59 @@
         <p>&copy; 2026 carréemploie. Tous droits réservés.</p>
     </footer>
 
-    <!-- RegWall Modal -->
+    <!-- RegWall Modal (Inscription Gratuite Directe) -->
     <div id="regwall-modal" class="admin-modal">
-        <div class="admin-modal-content" style="max-width: 450px; text-align: center; padding: 35px 25px;">
-            <div style="font-size: 3.5rem; color: var(--primary-color); margin-bottom: 15px;">
-                <i class="fa-solid fa-circle-user"></i>
+        <div class="admin-modal-content" style="max-width: 500px; padding: 25px; text-align: left; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; max-height: 90vh; overflow-y: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 10px;">
+                    <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--text-primary); margin: 0 0 5px 0;">Inscription Gratuite</h3>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">Inscris-toi gratuitement pour débloquer tous les détails de cette offre et postuler !</p>
             </div>
-            <h2 style="font-size: 1.6rem; font-weight: 700; margin-bottom: 10px; color: var(--text-primary);">Inscription Gratuite Requise</h2>
-            <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin-bottom: 25px;">
-                Inscris-toi gratuitement en <strong>30 secondes</strong> pour débloquer l'ensemble des offres d'emploi, voir les contacts (emails, téléphones), la source et postuler !
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button id="btn-regwall-confirm" class="btn-search" style="width: 100%; font-weight: 600; padding: 12px;">
-                    Créer mon compte gratuit
-                </button>
-                <button id="btn-regwall-close" class="btn-admin-cancel" style="width: 100%; padding: 12px;">
-                    Plus tard
-                </button>
-            </div>
+
+            <form id="regwall-profile-form" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-user"></i> Nom & Prénom</label>
+                    <input type="text" id="reg-fullname-free" placeholder="Ex: Adama Sawadogo" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                </div>
+
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-envelope"></i> Adresse Email</label>
+                    <input type="email" id="reg-email-free" placeholder="Ex: adama.sawadogo@gmail.com" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                </div>
+
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-phone"></i> Numéro WhatsApp (avec indicatif pays)</label>
+                    <input type="text" id="reg-phone-free" placeholder="Ex: +226 70 00 00 00" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                </div>
+
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-location-dot"></i> Votre Ville / Localité</label>
+                    <input type="text" id="reg-location-free" placeholder="Ex: Ouagadougou" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white;">
+                </div>
+
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-briefcase"></i> Quels métiers recherchez-vous ? (Jusqu'à 3 métiers)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <input type="text" id="reg-job-1" placeholder="Métier 1" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                        <input type="text" id="reg-job-2" placeholder="Métier 2 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                        <input type="text" id="reg-job-3" placeholder="Métier 3 (Opt.)" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border); color: white; font-size: 0.85rem;">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" id="btn-regwall-submit" class="btn-search" style="flex: 1; font-weight: 600; padding: 12px;">
+                        Terminer mon inscription gratuite
+                    </button>
+                    <button type="button" id="btn-regwall-close" class="btn-admin-cancel" style="padding: 12px 15px;">
+                        Plus tard
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Job Details Modal -->
     <div id="job-details-modal" class="admin-modal">
         <div class="admin-modal-content" style="max-width: 650px; padding: 30px; border-radius: 15px; background: var(--panel-bg); color: var(--text-primary); border: 1px solid var(--panel-border);">
