@@ -474,12 +474,18 @@ async function runMatcher() {
           if (limit < CURRENT_DATE) return false;
         }
 
-        // B. Correspondance métier
-        const userKeywords = user.jobtitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+        // B. Correspondance métier (support multi-métiers séparés par des virgules)
+        const userKeywords = user.jobtitle.toLowerCase().split(',').map(t => t.trim()).filter(t => t.length > 0);
         const jobTitleLower = job.title.toLowerCase();
         const jobDescLower = job.description.toLowerCase();
         
-        return userKeywords.some(keyword => jobTitleLower.includes(keyword) || jobDescLower.includes(keyword));
+        return userKeywords.some(term => {
+          const words = term.split(/\s+/).filter(w => w.length > 3);
+          if (words.length === 0) {
+            return jobTitleLower.includes(term) || jobDescLower.includes(term);
+          }
+          return words.some(word => jobTitleLower.includes(word) || jobDescLower.includes(word));
+        });
       });
 
       console.log(`   ↳ Pré-filtrage : ${filteredJobs.length} offres actives potentielles trouvées (sur ${jobs.length} totales)`);

@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY) {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log("⚡ Supabase connecté avec succès !");
+        // Log visit in analytics table
+        supabase.from('analytics').insert({ visit_type: 'page_view' })
+            .then(() => console.log("📈 Visite comptabilisée sur Supabase."))
+            .catch(err => console.warn("Alerte analytique :", err));
     } else {
         console.log("ℹ️ Supabase non configuré. Mode Démo Local (LocalStorage) activé.");
     }
@@ -295,8 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 description: j.description,
                                 source: j.source,
                                 url: j.url,
-                                deadlineDate: j.deadline_date
-                            }));
+                                deadlineDate: j.deadline_date,
+                                isPinned: j.is_pinned || false
+                            })).sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
                         }
                     }
 
@@ -308,8 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         description: j.description,
                         source: j.source,
                         url: j.url,
-                        deadlineDate: j.deadline_date
-                    }));
+                        deadlineDate: j.deadline_date,
+                        isPinned: j.is_pinned || false
+                    })).sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
                 } else if (data && data.length === 0) {
                     console.log("🌱 Supabase vide. Seeding automatique des offres d'emploi...");
                     const jobsToSeed = SIMULATED_LOCAL_JOBS.map(j => ({
@@ -341,13 +347,13 @@ document.addEventListener('DOMContentLoaded', () => {
         homeJobsGrid.innerHTML = '';
         const jobsList = await getActiveJobsList();
         
-        // Prendre les 4 dernières offres actives
+        // Prendre les 4 premières offres (qui contiennent les épinglées en premier)
         const activeJobs = jobsList.filter(job => new Date(job.deadlineDate) >= currentDate);
-        const latestJobs = activeJobs.slice(-4); 
+        const latestJobs = activeJobs.slice(0, 4); 
 
         latestJobs.forEach(job => {
             const card = document.createElement('div');
-            card.className = "home-job-card";
+            card.className = job.isPinned ? "home-job-card job-pinned" : "home-job-card";
             card.setAttribute('data-job-title', job.title);
 
             let dateLimitStr = "Non spécifiée";
@@ -396,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Job Card Generation Helper
     function createJobCard(match, showSendButton = true) {
         const card = document.createElement('div');
-        card.className = "job-card-wrapper";
+        card.className = match.job.isPinned ? "job-card-wrapper job-pinned" : "job-card-wrapper";
         
         let sendBtnHtml = "";
         if (showSendButton) {
@@ -452,10 +458,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsCountText = document.getElementById('results-count-text');
 
     btnRunSearch.addEventListener('click', async () => {
-        const searchTitle = document.getElementById('search-title').value.trim().toLowerCase();
+        const searchTitleRaw = document.getElementById('search-title').value.trim().toLowerCase();
         const searchLoc = document.getElementById('search-location').value.trim().toLowerCase();
 
-        if (!searchTitle && !searchLoc) {
+        if (!searchTitleRaw && !searchLoc) {
             showToast("Veuillez saisir ce que vous cherchez (Ex: Chauffeur, Secrétaire, Humanitaire) !", "error");
             return;
         }
@@ -473,6 +479,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btnRunSearch.textContent = "Rechercher";
 
             const matches = [];
+            
+            // Découper la recherche par virgule pour gérer les profils polyvalents
+            const searchTerms = searchTitleRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
             jobsList.forEach(job => {
                 const limit = new Date(job.deadlineDate);
                 if (limit < currentDate) return;
@@ -481,49 +491,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jobLoc = job.location.toLowerCase();
                 const jobDesc = job.description.toLowerCase();
                 
-                const titleMatch = !searchTitle || jobTitle.includes(searchTitle) || jobDesc.includes(searchTitle);
+                // Si l'un des mots-clés correspond au titre ou à la description
+                const titleMatch = searchTerms.length === 0 || searchTerms.some(term => jobTitle.includes(term) || jobDesc.includes(term));
                 const locMatch = !searchLoc || jobLoc.includes(searchLoc);
 
                 if (titleMatch && locMatch) {
                     let score = 75;
                     let explanation = `Ce poste de ${job.title} correspond à vos capacités. La ville de ${job.location} est indiquée pour ce poste.`;
                     
-                    if (searchTitle.includes("bureau") || searchTitle.includes("agent") || searchTitle.includes("secr") || searchTitle.includes("assist")) {
+                    // On prend le premier terme recherché pour adapter le message de l'IA
+                    const matchedTerm = searchTerms.find(term => jobTitle.includes(term) || jobDesc.includes(term)) || (searchTerms[0] || "");
+                    
+                    if (matchedTerm.includes("bureau") || matchedTerm.includes("agent") || matchedTerm.includes("secr") || matchedTerm.includes("assist")) {
                         if (jobTitle.includes("bureau") || jobTitle.includes("secr") || jobTitle.includes("assist")) {
                             score = 95;
                             explanation = "L'IA valide ce poste : vos critères d'organisation et de secrétariat conviennent parfaitement aux tâches administratives de ce bureau.";
                         }
-                    } else if (searchTitle.includes("recouvrement") || searchTitle.includes("comptable") || searchTitle.includes("compte")) {
+                    } else if (matchedTerm.includes("recouvrement") || matchedTerm.includes("comptable") || matchedTerm.includes("compte")) {
                         if (jobTitle.includes("recouvrement") || jobTitle.includes("comptable")) {
                             score = 92;
                             explanation = "Matching très fort. L'IA note que la rigueur demandée pour les déclarations fiscales ou la caisse s'accorde bien avec votre profil.";
                         }
-                    } else if (searchTitle.includes("communication") || searchTitle.includes("publici")) {
+                    } else if (matchedTerm.includes("communication") || matchedTerm.includes("publici")) {
                         if (jobTitle.includes("communication") || jobTitle.includes("publici")) {
                             score = 88;
                             explanation = "L'IA confirme votre aptitude pour ce rôle de direction de service ou de gestion commerciale dans la communication.";
                         }
-                    } else if (searchTitle.includes("chauffeur") || searchTitle.includes("livreur") || searchTitle.includes("condui")) {
+                    } else if (matchedTerm.includes("chauffeur") || matchedTerm.includes("livreur") || matchedTerm.includes("condui")) {
                         if (jobTitle.includes("chauffeur") || jobTitle.includes("livreur")) {
                             score = 94;
                             explanation = "L'IA valide ce poste de chauffeur. Votre permis et votre expérience de conduite de véhicules de sécurité ou de fret sont idéaux.";
                         }
-                    } else if (searchTitle.includes("serve") || searchTitle.includes("maquis") || searchTitle.includes("restau")) {
+                    } else if (matchedTerm.includes("serve") || matchedTerm.includes("maquis") || matchedTerm.includes("restau")) {
                         if (jobTitle.includes("serve") || jobTitle.includes("maquis")) {
                             score = 90;
                             explanation = "Matching IA validé. Poste de serveuse en maquis correspondant à vos critères d'accueil.";
                         }
-                    } else if (searchTitle.includes("humanitaire") || searchTitle.includes("ong") || searchTitle.includes("projet") || searchTitle.includes("nutrition")) {
+                    } else if (matchedTerm.includes("humanitaire") || matchedTerm.includes("ong") || matchedTerm.includes("projet") || matchedTerm.includes("nutrition")) {
                         if (jobTitle.includes("humanitaire") || jobTitle.includes("nutrition") || jobTitle.includes("chauffeur")) {
                             score = 91;
                             explanation = "Matching IA : profil adapté aux interventions d'urgence et à la rigueur logistique requise par les ONG.";
                         }
-                    } else if (searchTitle.includes("mine") || searchTitle.includes("techni") || searchTitle.includes("chantier")) {
+                    } else if (matchedTerm.includes("mine") || matchedTerm.includes("techni") || matchedTerm.includes("chantier")) {
                         if (jobTitle.includes("mine") || jobTitle.includes("chantier")) {
                             score = 89;
                             explanation = "Matching IA : profil technique opérationnel adapté aux contraintes de sécurité et de supervision sur site isolé.";
                         }
-                    } else if (searchTitle.includes("conseiller") || searchTitle.includes("clientele") || searchTitle.includes("microfinance") || searchTitle.includes("credit")) {
+                    } else if (matchedTerm.includes("conseiller") || matchedTerm.includes("clientele") || matchedTerm.includes("microfinance") || matchedTerm.includes("credit")) {
                         if (jobTitle.includes("conseiller") || jobTitle.includes("clientele") || jobTitle.includes("microfinance")) {
                             score = 93;
                             explanation = "Matching IA : profil de conseiller clientèle idéal pour la microfinance et la gestion de crédits aux micro-entrepreneurs.";
@@ -547,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             resultsCountText.textContent = `${matches.length} offre(s) active(s) trouvée(s) et validée(s) par l'IA`;
 
-            if (daysRemaining > 0) {
+            if (profile) {
                 searchJobsList.classList.remove('blurred-active');
             } else {
                 searchJobsList.classList.add('blurred-active');
@@ -558,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchJobsList.appendChild(card);
             });
 
-            if (daysRemaining <= 0 && matches.length > 3) {
+            if (!profile && matches.length > 3) {
                 searchPaywall.classList.remove('hidden');
                 setTimeout(() => {
                     const cards = document.querySelectorAll('#search-jobs-list .job-card-wrapper');
@@ -664,10 +678,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const limit = new Date(job.deadlineDate);
                 if (limit < currentDate) return;
 
-                const userKeywords = profile.jobtitle.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+                const userKeywords = profile.jobtitle.toLowerCase().split(',').map(t => t.trim()).filter(t => t.length > 0);
                 const jobTitleLower = job.title.toLowerCase();
                 const jobDescLower = job.description.toLowerCase();
-                const keywordMatch = userKeywords.some(keyword => jobTitleLower.includes(keyword) || jobDescLower.includes(keyword));
+                
+                const keywordMatch = userKeywords.some(term => {
+                    const words = term.split(/\s+/).filter(w => w.length > 3);
+                    if (words.length === 0) {
+                        return jobTitleLower.includes(term) || jobDescLower.includes(term);
+                    }
+                    return words.some(word => jobTitleLower.includes(word) || jobDescLower.includes(word));
+                });
 
                 if (keywordMatch) {
                     let score = 80;
@@ -730,68 +751,56 @@ document.addEventListener('DOMContentLoaded', () => {
             const jobUrl = btnSend.getAttribute('data-job-url');
             const jobTitle = btnSend.getAttribute('data-job-title');
 
-            if (daysRemaining <= 0) {
-                showToast("Action bloquée : Abonnez-vous pour recevoir les liens de candidature !", "error");
+            if (!profile) {
+                showToast("Inscription requise : créez votre profil gratuit pour recevoir les coordonnées !", "error");
                 
                 setTimeout(() => {
-                    switchTab('tab-profile');
-                    const pricingSection = document.getElementById('pricing-section');
-                    if (pricingSection) {
-                        pricingSection.scrollIntoView({ behavior: 'smooth' });
-                    }
-                }, 800);
-            } else {
-                btnSend.disabled = true;
-                btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi en cours...';
-
-                // OPTIONAL: LOG NOTIFICATION IN SUPABASE
-                if (supabase && profile) {
-                    try {
-                        const jobsList = await getActiveJobsList();
-                        const jobMatch = jobsList.find(j => j.url === jobUrl);
-                        if (jobMatch) {
-                            await supabase.from('notifications').insert({
-                                id: `notif_${profile.id}_${jobMatch.id}_${Date.now()}`,
-                                user_id: profile.id,
-                                job_id: jobMatch.id,
-                                score: 94,
-                                sent_at: new Date().toISOString()
-                            });
-                        }
-                    } catch (err) {
-                        console.warn("Synchro notif Supabase échouée.", err);
-                    }
-                }
-
-                setTimeout(() => {
-                    btnSend.disabled = false;
-                    btnSend.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Lien envoyé !';
-                    
-                    let destination = "votre messagerie";
-                    if (profile) {
-                        if (profile.notifyWhatsapp && profile.phone) {
-                            destination = `WhatsApp (${profile.phone})`;
-                            const cleanPhone = profile.phone.replace(/[^0-9+]/g, ''); // Nettoyer les espaces
-                            const message = `Bonjour ${profile.fullname} ! Voici le lien de candidature pour l'offre "${jobTitle}" : ${jobUrl}`;
-                            const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(message)}`;
-                            window.open(whatsappUrl, '_blank');
-                        } else if (profile.notifyEmail && profile.email) {
-                            destination = `Email (${profile.email})`;
-                            const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Lien de candidature - " + jobTitle)}&body=${encodeURIComponent("Bonjour " + profile.fullname + ",\n\nVoici le lien de candidature pour l'offre de " + jobTitle + " :\n\n" + jobUrl + "\n\nBonne chance !\nL'équipe carréemploie")}`;
-                            window.location.href = mailtoUrl;
-                        }
-                    } else {
-                        // Pas de profil configuré (Recherche directe seule)
-                        showToast("Veuillez d'abord configurer votre Alerte IA pour recevoir les liens sur votre numéro/email.", "error");
-                        setTimeout(() => {
-                            switchTab('tab-register');
-                        }, 1000);
-                        return;
-                    }
-                    
-                    showToast(`Le lien de candidature pour "${jobTitle}" a été envoyé sur ${destination} !`, "success");
+                    switchTab('tab-register');
                 }, 1000);
+                return;
             }
+
+            btnSend.disabled = true;
+            btnSend.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi en cours...';
+
+            // OPTIONAL: LOG NOTIFICATION IN SUPABASE
+            if (supabase && profile) {
+                try {
+                    const jobsList = await getActiveJobsList();
+                    const jobMatch = jobsList.find(j => j.url === jobUrl);
+                    if (jobMatch) {
+                        await supabase.from('notifications').insert({
+                            id: `notif_${profile.id}_${jobMatch.id}_${Date.now()}`,
+                            user_id: profile.id,
+                            job_id: jobMatch.id,
+                            score: 94,
+                            sent_at: new Date().toISOString()
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Synchro notif Supabase échouée.", err);
+                }
+            }
+
+            setTimeout(() => {
+                btnSend.disabled = false;
+                btnSend.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Lien envoyé !';
+                
+                let destination = "votre messagerie";
+                if (profile.notifyWhatsapp && profile.phone) {
+                    destination = `WhatsApp (${profile.phone})`;
+                    const cleanPhone = profile.phone.replace(/[^0-9+]/g, ''); // Nettoyer les espaces
+                    const message = `Bonjour ${profile.fullname} ! Voici le lien de candidature pour l'offre "${jobTitle}" : ${jobUrl}`;
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+                } else if (profile.notifyEmail && profile.email) {
+                    destination = `Email (${profile.email})`;
+                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Lien de candidature - " + jobTitle)}&body=${encodeURIComponent("Bonjour " + profile.fullname + ",\n\nVoici le lien de candidature pour l'offre de " + jobTitle + " :\n\n" + jobUrl + "\n\nBonne chance !\nL'équipe carréemploie")}`;
+                    window.location.href = mailtoUrl;
+                }
+                
+                showToast(`Le lien de candidature pour "${jobTitle}" a été envoyé sur ${destination} !`, "success");
+            }, 1000);
         }
     });
 

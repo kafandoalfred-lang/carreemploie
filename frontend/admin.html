@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>carréemploie — Espace Administrateur privé</title>
+    <link rel="icon" type="image/png" href="joyful_job_finder.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="background-color: var(--admin-bg); color: var(--admin-text); font-family: 'Outfit', sans-serif; padding-top: 20px;">
+
+    <!-- 1. Lock Screen (Authentication) -->
+    <div id="lock-screen" class="admin-lock-screen">
+        <i class="fa-solid fa-shield-halved" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 20px;"></i>
+        <h2>Espace Administrateur</h2>
+        <p style="color: var(--admin-text-sub); margin-bottom: 20px; font-size: 0.9rem;">Veuillez entrer le code d'accès privé pour déverrouiller le panneau.</p>
+        <input type="password" id="passcode-input" placeholder="••••" maxlength="12">
+        <button id="btn-login-admin">Déverrouiller</button>
+        <p id="auth-error-msg" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 15px; display: none;"><i class="fa-solid fa-circle-exclamation"></i> Code d'accès incorrect !</p>
+    </div>
+
+    <!-- 2. Admin Dashboard Layout (Initially Hidden) -->
+    <div id="admin-panel" class="admin-container" style="display: none;">
+        
+        <!-- Header -->
+        <header class="admin-header">
+            <h1><i class="fa-solid fa-circle-user"></i> carréemploie <span>Admin</span></h1>
+            <div style="display: flex; gap: 15px;">
+                <a href="index.html" class="btn-admin-cancel" style="display: flex; align-items: center; gap: 8px; text-decoration: none;"><i class="fa-solid fa-house"></i> Retour au site</a>
+                <button id="btn-logout-admin" class="btn-admin-cancel"><i class="fa-solid fa-lock"></i> Quitter</button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="admin-stat-info">
+                    <h3>Candidats Inscrits</h3>
+                    <p id="stat-total-users">0</p>
+                </div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon" style="color: var(--gold-color); background: rgba(245, 158, 11, 0.1);"><i class="fa-solid fa-crown"></i></div>
+                <div class="admin-stat-info">
+                    <h3>Abonnés Premium</h3>
+                    <p id="stat-premium-users">0</p>
+                </div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon" style="color: var(--success-color); background: rgba(16, 185, 129, 0.1);"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="admin-stat-info">
+                    <h3>Visites du Site</h3>
+                    <p id="stat-total-visits">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-target="section-candidates"><i class="fa-solid fa-user-graduate"></i> Candidats</button>
+            <button class="admin-tab" data-target="section-jobs"><i class="fa-solid fa-briefcase"></i> Offres d'Emploi</button>
+        </div>
+
+        <!-- Section 1 : Candidates List -->
+        <section id="section-candidates" class="admin-section active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 1.3rem;"><i class="fa-solid fa-list"></i> Liste des candidats inscrits</h2>
+                <span id="candidates-count-tag" style="color: var(--text-secondary); font-size: 0.9rem;">Chargement...</span>
+            </div>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Contact</th>
+                            <th>Métiers recherchés</th>
+                            <th>Abonnement</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidates-table-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--admin-text-sub);">
+                                <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 10px;"></i><br>Chargement des candidats...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 2 : Jobs list -->
+        <section id="section-jobs" class="admin-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 1.3rem;"><i class="fa-solid fa-folder-open"></i> Catalogue des offres d'emploi</h2>
+                <button id="btn-add-job-modal" class="btn-admin-action"><i class="fa-solid fa-plus"></i> Créer une offre</button>
+            </div>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Poste</th>
+                            <th>Entreprise</th>
+                            <th>Lieu / Source</th>
+                            <th>Date Limite</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-table-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: var(--admin-text-sub);">
+                                <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 10px;"></i><br>Chargement des offres...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Modal : Add/Edit Job -->
+    <div id="job-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2 id="modal-job-title">Créer une offre d'emploi</h2>
+                <button class="btn-close-modal" onclick="closeJobModal()">&times;</button>
+            </div>
+            <form id="job-form">
+                <input type="hidden" id="form-job-id">
+                
+                <div class="admin-form-group">
+                    <label for="form-job-title">Intitulé du poste *</label>
+                    <input type="text" id="form-job-title" placeholder="Ex: Chauffeur de Direction" required>
+                </div>
+                
+                <div class="admin-form-group">
+                    <label for="form-job-company">Entreprise ou Recruteur *</label>
+                    <input type="text" id="form-job-company" placeholder="Ex: Safi Transports" required>
+                </div>
+                
+                <div class="admin-form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="form-job-location">Lieu (Ville) *</label>
+                        <input type="text" id="form-job-location" placeholder="Ex: Ouagadougou" required>
+                    </div>
+                    <div>
+                        <label for="form-job-deadline">Date Limite de Soumission</label>
+                        <input type="date" id="form-job-deadline">
+                    </div>
+                </div>
+
+                <div class="admin-form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label for="form-job-source">Source</label>
+                        <input type="text" id="form-job-source" placeholder="Ex: Publié en direct">
+                    </div>
+                    <div>
+                        <label for="form-job-url">Lien externe (URL)</label>
+                        <input type="url" id="form-job-url" placeholder="Ex: https://recrutement.com">
+                    </div>
+                </div>
+
+                <div class="admin-form-group">
+                    <label for="form-job-desc">Description de l'offre (Missions & Profil requis) *</label>
+                    <textarea id="form-job-desc" placeholder="Renseignez le texte de l'offre de façon claire..." required></textarea>
+                </div>
+
+                <div class="admin-form-group switch-group">
+                    <input type="checkbox" id="form-job-pinned">
+                    <label for="form-job-pinned" style="display: inline; margin-bottom: 0; cursor: pointer;"> Épingler cette offre "À la Une" tout en haut du site</label>
+                </div>
+
+                <div class="admin-form-actions">
+                    <button type="button" class="btn-admin-cancel" onclick="closeJobModal()">Annuler</button>
+                    <button type="submit" class="btn-admin-action" id="btn-save-job">Enregistrer l'offre</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="admin-toast" style="position: fixed; bottom: 20px; right: 20px; padding: 15px 25px; border-radius: 10px; background: #1f2937; border-left: 5px solid var(--primary-color); display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 2000; transform: translateY(150px); transition: transform 0.3s ease;">
+        <span id="admin-toast-icon" style="color: var(--primary-color);"><i class="fa-solid fa-circle-check"></i></span>
+        <span id="admin-toast-text">Message</span>
+    </div>
+
+    <!-- App Logic -->
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = "https://yyqybbzlcrvwupfbjwtc.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_U9d1sl9kQIbqHH1TX8E2yQ_ZqoWGd28";
+        
+        let supabase = null;
+        if (window.supabase) {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        // DOM elements
+        const lockScreen = document.getElementById('lock-screen');
+        const adminPanel = document.getElementById('admin-panel');
+        const passcodeInput = document.getElementById('passcode-input');
+        const btnLoginAdmin = document.getElementById('btn-login-admin');
+        const authErrorMsg = document.getElementById('auth-error-msg');
+        const btnLogoutAdmin = document.getElementById('btn-logout-admin');
+
+        const statTotalUsers = document.getElementById('stat-total-users');
+        const statPremiumUsers = document.getElementById('stat-premium-users');
+        const statTotalVisits = document.getElementById('stat-total-visits');
+        
+        const candidatesTableBody = document.getElementById('candidates-table-body');
+        const candidatesCountTag = document.getElementById('candidates-count-tag');
+        
+        const jobsTableBody = document.getElementById('jobs-table-body');
+        const btnAddJobModal = document.getElementById('btn-add-job-modal');
+        const jobModal = document.getElementById('job-modal');
+        const jobForm = document.getElementById('job-form');
+
+        // State variables
+        let isEditing = false;
+        
+        // Passcode Protection check
+        btnLoginAdmin.addEventListener('click', handleLogin);
+        passcodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+
+        function handleLogin() {
+            const enteredCode = passcodeInput.value.trim();
+            if (enteredCode === "admin2026") {
+                sessionStorage.setItem('admin_auth', 'true');
+                authErrorMsg.style.display = 'none';
+                lockScreen.style.display = 'none';
+                adminPanel.style.display = 'block';
+                showToast("Accès autorisé ! Chargement du tableau de bord...", "success");
+                loadDashboardData();
+            } else {
+                authErrorMsg.style.display = 'block';
+                passcodeInput.value = '';
+                passcodeInput.focus();
+            }
+        }
+
+        btnLogoutAdmin.addEventListener('click', () => {
+            sessionStorage.removeItem('admin_auth');
+            lockScreen.style.display = 'block';
+            adminPanel.style.display = 'none';
+            passcodeInput.value = '';
+            showToast("Session fermée.", "info");
+        });
+
+        // Check active session on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('admin_auth') === 'true') {
+                lockScreen.style.display = 'none';
+                adminPanel.style.display = 'block';
+                loadDashboardData();
+            } else {
+                passcodeInput.focus();
+            }
+        });
+
+        // Navigation Tabs Toggle
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const targetId = tab.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // Toast notifications Helper
+        function showToast(text, type = "success") {
+            const toast = document.getElementById('admin-toast');
+            const toastText = document.getElementById('admin-toast-text');
+            const toastIcon = document.getElementById('admin-toast-icon');
+
+            toastText.textContent = text;
+            
+            if (type === "success") {
+                toast.style.borderLeftColor = "var(--success-color)";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check" style="color: var(--success-color);"></i>`;
+            } else if (type === "error") {
+                toast.style.borderLeftColor = "var(--danger-color)";
+                toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger-color);"></i>`;
+            } else {
+                toast.style.borderLeftColor = "var(--primary-blue)";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-info" style="color: var(--primary-blue);"></i>`;
+            }
+
+            toast.style.transform = 'translateY(0)';
+            setTimeout(() => {
+                toast.style.transform = 'translateY(150px)';
+            }, 3000);
+        }
+
+        // LOAD DATA FROM SUPABASE
+        async function loadDashboardData() {
+            if (!supabase) {
+                showToast("Erreur: Supabase n'est pas configuré.", "error");
+                return;
+            }
+
+            try {
+                // 1. Fetch visitors statistics
+                const { count: visitsCount, error: visitsError } = await supabase
+                    .from('analytics')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (visitsError) throw visitsError;
+                statTotalVisits.textContent = visitsCount || 0;
+
+                // 2. Fetch Candidates list
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (usersError) throw usersError;
+                
+                statTotalUsers.textContent = users.length;
+                const premiumCount = users.filter(u => u.subscription_status === "Premium").length;
+                statPremiumUsers.textContent = premiumCount;
+
+                renderCandidatesTable(users);
+
+                // 3. Fetch Jobs list
+                const { data: jobs, error: jobsError } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .order('is_pinned', { ascending: false })
+                    .order('deadline_date', { ascending: true });
+                
+                if (jobsError) throw jobsError;
+                
+                renderJobsTable(jobs);
+
+            } catch (err) {
+                console.error("Dashboard loading error:", err);
+                showToast("Erreur lors de la lecture des données cloud.", "error");
+            }
+        }
+
+        // RENDER CANDIDATES TABLE
+        function renderCandidatesTable(users) {
+            candidatesCountTag.textContent = `${users.length} candidat(s) inscrit(s)`;
+            
+            if (users.length === 0) {
+                candidatesTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 30px; color: var(--admin-text-sub);">
+                            Aucun candidat inscrit pour le moment.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            candidatesTableBody.innerHTML = "";
+            users.forEach(user => {
+                const tr = document.createElement('tr');
+                
+                // Subscription Badge
+                const isPremium = user.subscription_status === "Premium";
+                const badgeClass = isPremium ? "badge-premium" : "badge-free";
+                const badgeText = isPremium ? `Premium (${user.subscription_days_remaining || 0}j)` : "Gratuit";
+
+                // Format registration date
+                const regDate = new Date(user.created_at).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                });
+
+                tr.innerHTML = `
+                    <td>
+                        <strong style="color: var(--text-primary);">${user.fullname}</strong><br>
+                        <small style="color: var(--admin-text-sub);">Inscrit le ${regDate}</small>
+                    </td>
+                    <td>
+                        <i class="fa-solid fa-envelope" style="width: 15px; color: var(--admin-text-sub);"></i> ${user.email}<br>
+                        <i class="fa-solid fa-phone" style="width: 15px; color: var(--admin-text-sub);"></i> ${user.phone || 'Non renseigné'}
+                    </td>
+                    <td>
+                        <span style="color: var(--text-primary); font-weight: 500;">${user.jobtitle}</span><br>
+                        <small style="color: var(--admin-text-sub);"><i class="fa-solid fa-location-dot"></i> ${user.location || 'Burkina Faso'}</small>
+                    </td>
+                    <td>
+                        <span class="badge ${badgeClass}">${badgeText}</span>
+                    </td>
+                    <td>
+                        <div class="admin-actions-cell">
+                            <button onclick="toggleUserSubscription('${user.id}', '${user.subscription_status}')" 
+                                    class="btn-action-icon toggle-sub" 
+                                    title="${isPremium ? 'Rétablir en Gratuit' : 'Activer le Premium (Paiement Orange/Moov)'}">
+                                <i class="fa-solid ${isPremium ? 'fa-user-minus' : 'fa-user-shield'}"></i>
+                            </button>
+                            <button onclick="deleteCandidate('${user.id}', '${user.fullname}')" 
+                                    class="btn-action-icon delete" 
+                                    title="Supprimer définitivement ce candidat">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                candidatesTableBody.appendChild(tr);
+            });
+        }
+
+        // RENDER JOBS TABLE
+        function renderJobsTable(jobs) {
+            if (jobs.length === 0) {
+                jobsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 30px; color: var(--admin-text-sub);">
+                            Aucune offre d'emploi active dans le catalogue.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            jobsTableBody.innerHTML = "";
+            jobs.forEach(job => {
+                const tr = document.createElement('tr');
+                if (job.is_pinned) {
+                    tr.style.backgroundColor = "rgba(245, 158, 11, 0.02)";
+                }
+
+                // Format deadline date
+                let limit = "Aucune limite";
+                if (job.deadline_date) {
+                    limit = new Date(job.deadline_date).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+                }
+
+                tr.innerHTML = `
+                    <td>
+                        <span style="color: var(--text-primary); font-weight: 600;">${job.title}</span>
+                        ${job.is_pinned ? ' <span style="color: var(--gold-color); font-size: 0.8rem; font-weight: bold; margin-left: 5px;">★ À la Une</span>' : ''}
+                    </td>
+                    <td><strong style="color: var(--text-secondary);">${job.company}</strong></td>
+                    <td>
+                        <span>${job.location}</span><br>
+                        <small style="color: var(--admin-text-sub);">${job.source}</small>
+                    </td>
+                    <td>
+                        <span style="color: ${job.deadline_date && new Date(job.deadline_date) < new Date("2026-06-29") ? 'var(--danger-color)' : 'var(--success-color)'};">
+                            ${limit}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="admin-actions-cell">
+                            <button onclick="toggleJobPin('${job.id}', ${job.is_pinned})" 
+                                    class="btn-action-icon pin ${job.is_pinned ? 'pinned' : ''}" 
+                                    title="${job.is_pinned ? 'Retirer de la Une' : 'Mettre à la Une tout en haut'}">
+                                <i class="fa-solid fa-thumbtack"></i>
+                            </button>
+                            <button onclick="openEditJobModal('${job.id}')" 
+                                    class="btn-action-icon edit" 
+                                    title="Modifier cette offre">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteJob('${job.id}', '${job.title}')" 
+                                    class="btn-action-icon delete" 
+                                    title="Supprimer cette offre">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                jobsTableBody.appendChild(tr);
+            });
+        }
+
+        // ACTION : TOGGLE USER PREMIUM STATUS (For Mobile Money cash payments)
+        async function toggleUserSubscription(userId, currentStatus) {
+            const nextStatus = currentStatus === "Premium" ? "Gratuit" : "Premium";
+            const nextDays = currentStatus === "Premium" ? 0 : 30;
+
+            const confirmMsg = nextStatus === "Premium" 
+                ? `Activer manuellement 30 jours d'accès Premium pour ce candidat (suite à un paiement Orange Money ou Moov Money) ?`
+                : `Rétablir ce candidat en Forfait Gratuit ?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .update({ 
+                        subscription_status: nextStatus, 
+                        subscription_days_remaining: nextDays 
+                    })
+                    .eq('id', userId);
+
+                if (error) throw error;
+                showToast(`Statut du candidat mis à jour : ${nextStatus} !`, "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("Subscription update error:", err);
+                showToast("Impossible de modifier l'abonnement.", "error");
+            }
+        }
+
+        // ACTION : DELETE CANDIDATE PROFILE
+        async function deleteCandidate(userId, fullname) {
+            if (!confirm(`ATTENTION : Voulez-vous vraiment supprimer définitivement le candidat "${fullname}" de la base de données ? Cette action est irréversible.`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', userId);
+
+                if (error) throw error;
+                showToast(`Candidat "${fullname}" supprimé de la base.`, "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("User deletion error:", err);
+                showToast("Impossible de supprimer le profil.", "error");
+            }
+        }
+
+        // ACTION : TOGGLE JOB PINNING
+        async function toggleJobPin(jobId, currentPinned) {
+            try {
+                const { error } = await supabase
+                    .from('jobs')
+                    .update({ is_pinned: !currentPinned })
+                    .eq('id', jobId);
+
+                if (error) throw error;
+                showToast(!currentPinned ? "Offre épinglée à la Une !" : "Offre retirée de la Une.", "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("Pin update error:", err);
+                showToast("Impossible de modifier l'épinglage.", "error");
+            }
+        }
+
+        // ACTION : DELETE JOB OFFER
+        async function deleteJob(jobId, title) {
+            if (!confirm(`Voulez-vous supprimer l'offre d'emploi : "${title}" ?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('jobs')
+                    .delete()
+                    .eq('id', jobId);
+
+                if (error) throw error;
+                showToast("Offre d'emploi supprimée définitivement.", "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("Job deletion error:", err);
+                showToast("Impossible de supprimer cette offre.", "error");
+            }
+        }
+
+        // ACTION : OPEN JOB MODAL (CREATE NEW)
+        btnAddJobModal.addEventListener('click', () => {
+            isEditing = false;
+            document.getElementById('modal-job-title').textContent = "Créer une offre d'emploi";
+            jobForm.reset();
+            document.getElementById('form-job-id').value = "";
+            document.getElementById('form-job-source').value = "Publié en direct";
+            jobModal.classList.add('open');
+        });
+
+        // ACTION : OPEN JOB MODAL (EDIT EXISTING)
+        async function openEditJobModal(jobId) {
+            try {
+                const { data: job, error } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .eq('id', jobId)
+                    .single();
+
+                if (error) throw error;
+
+                isEditing = true;
+                document.getElementById('modal-job-title').textContent = "Modifier l'offre d'emploi";
+                document.getElementById('form-job-id').value = job.id;
+                document.getElementById('form-job-title').value = job.title;
+                document.getElementById('form-job-company').value = job.company;
+                document.getElementById('form-job-location').value = job.location;
+                document.getElementById('form-job-deadline').value = job.deadline_date || "";
+                document.getElementById('form-job-source').value = job.source || "";
+                document.getElementById('form-job-url').value = job.url || "";
+                document.getElementById('form-job-desc').value = job.description;
+                document.getElementById('form-job-pinned').checked = job.is_pinned || false;
+
+                jobModal.classList.add('open');
+
+            } catch (err) {
+                console.error("Error loading job details:", err);
+                showToast("Erreur de chargement de l'offre.", "error");
+            }
+        }
+
+        function closeJobModal() {
+            jobModal.classList.remove('open');
+        }
+
+        // FORM SUBMISSION (CREATE/EDIT SAVE)
+        jobForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const jobId = document.getElementById('form-job-id').value;
+            const title = document.getElementById('form-job-title').value.trim();
+            const company = document.getElementById('form-job-company').value.trim();
+            const location = document.getElementById('form-job-location').value.trim();
+            const deadlineDate = document.getElementById('form-job-deadline').value || null;
+            const source = document.getElementById('form-job-source').value.trim() || "Publié en direct";
+            const url = document.getElementById('form-job-url').value.trim() || "https://emploi.lefaso.net";
+            const description = document.getElementById('form-job-desc').value.trim();
+            const isPinned = document.getElementById('form-job-pinned').checked;
+
+            const payload = {
+                title,
+                company,
+                location,
+                deadline_date: deadlineDate,
+                source,
+                url,
+                description,
+                is_pinned: isPinned,
+                scraped_at: new Date().toISOString()
+            };
+
+            try {
+                if (isEditing && jobId) {
+                    // Update existing
+                    const { error } = await supabase
+                        .from('jobs')
+                        .update(payload)
+                        .eq('id', jobId);
+
+                    if (error) throw error;
+                    showToast("Offre d'emploi modifiée avec succès !", "success");
+                } else {
+                    // Create new
+                    const newId = `job_manual_${Date.now()}`;
+                    const { error } = await supabase
+                        .from('jobs')
+                        .insert({ id: newId, ...payload });
+
+                    if (error) throw error;
+                    showToast("Nouvelle offre créée !", "success");
+                }
+
+                closeJobModal();
+                loadDashboardData();
+
+            } catch (err) {
+                console.error("Error saving job:", err);
+                showToast("Impossible d'enregistrer les données.", "error");
+            }
+        });
+    </script>
+</body>
+</html>
