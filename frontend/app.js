@@ -444,20 +444,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const regRegisterView = document.getElementById('regwall-register-view');
     const regRecoverView = document.getElementById('regwall-recover-view');
 
-    const linkGotoRecover = document.getElementById('link-goto-recover');
-    const linkGotoRegister = document.getElementById('link-goto-register');
+    const btnGotoRecover = document.getElementById('btn-goto-recover');
+    const btnGotoRegister = document.getElementById('btn-goto-register');
 
     // Navigation entre Inscription et Récupération
-    if (linkGotoRecover) {
-        linkGotoRecover.addEventListener('click', (e) => {
+    if (btnGotoRecover) {
+        btnGotoRecover.addEventListener('click', (e) => {
             e.preventDefault();
             if (regRegisterView) regRegisterView.classList.add('hidden');
             if (regRecoverView) regRecoverView.classList.remove('hidden');
         });
     }
 
-    if (linkGotoRegister) {
-        linkGotoRegister.addEventListener('click', (e) => {
+    if (btnGotoRegister) {
+        btnGotoRegister.addEventListener('click', (e) => {
             e.preventDefault();
             if (regRecoverView) regRecoverView.classList.add('hidden');
             if (regRegisterView) regRegisterView.classList.remove('hidden');
