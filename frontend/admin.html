@@ -200,16 +200,23 @@
 
     <!-- App Logic -->
     <script>
-        // Supabase configuration
+        // 1. Supabase configuration
         const SUPABASE_URL = "https://yyqybbzlcrvwupfbjwtc.supabase.co";
         const SUPABASE_KEY = "sb_publishable_U9d1sl9kQIbqHH1TX8E2yQ_ZqoWGd28";
         
         let supabase = null;
-        if (window.supabase) {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log("⚡ Supabase client initialized successfully in admin.html");
+            } else {
+                console.warn("⚠️ Supabase library not loaded yet.");
+            }
+        } catch (e) {
+            console.error("❌ Failed to initialize Supabase client:", e);
         }
 
-        // DOM elements
+        // 2. DOM elements
         const lockScreen = document.getElementById('lock-screen');
         const adminPanel = document.getElementById('admin-panel');
         const passcodeInput = document.getElementById('passcode-input');
@@ -231,82 +238,15 @@
 
         // State variables
         let isEditing = false;
-        
-        // Passcode Protection check
-        btnLoginAdmin.addEventListener('click', handleLogin);
-        passcodeInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
 
-        function handleLogin() {
-            const enteredCode = passcodeInput.value.trim();
-            if (enteredCode === "admin2026") {
-                authErrorMsg.style.display = 'none';
-                lockScreen.style.display = 'none';
-                adminPanel.style.display = 'block';
-                showToast("Accès autorisé ! Chargement du tableau de bord...", "success");
-                
-                try {
-                    sessionStorage.setItem('admin_auth', 'true');
-                } catch (e) {
-                    console.warn("sessionStorage non disponible:", e);
-                }
-                
-                loadDashboardData();
-            } else {
-                authErrorMsg.style.display = 'block';
-                passcodeInput.value = '';
-                passcodeInput.focus();
-            }
-        }
-
-        btnLogoutAdmin.addEventListener('click', () => {
-            try {
-                sessionStorage.removeItem('admin_auth');
-            } catch (e) {
-                console.warn(e);
-            }
-            lockScreen.style.display = 'block';
-            adminPanel.style.display = 'none';
-            passcodeInput.value = '';
-            showToast("Session fermée.", "info");
-        });
-
-        // Check active session on load
-        window.addEventListener('DOMContentLoaded', () => {
-            let isAuthenticated = false;
-            try {
-                isAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
-            } catch (e) {
-                console.warn(e);
-            }
-
-            if (isAuthenticated) {
-                lockScreen.style.display = 'none';
-                adminPanel.style.display = 'block';
-                loadDashboardData();
-            } else {
-                passcodeInput.focus();
-            }
-        });
-
-        // Navigation Tabs Toggle
-        document.querySelectorAll('.admin-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-                
-                tab.classList.add('active');
-                const targetId = tab.getAttribute('data-target');
-                document.getElementById(targetId).classList.add('active');
-            });
-        });
-
-        // Toast notifications Helper
+        // 3. UI Helpers
         function showToast(text, type = "success") {
+            console.log(`[Toast] ${type}: ${text}`);
             const toast = document.getElementById('admin-toast');
             const toastText = document.getElementById('admin-toast-text');
             const toastIcon = document.getElementById('admin-toast-icon');
+
+            if (!toast || !toastText || !toastIcon) return;
 
             toastText.textContent = text;
             
@@ -327,55 +267,9 @@
             }, 3000);
         }
 
-        // LOAD DATA FROM SUPABASE
-        async function loadDashboardData() {
-            if (!supabase) {
-                showToast("Erreur: Supabase n'est pas configuré.", "error");
-                return;
-            }
-
-            try {
-                // 1. Fetch visitors statistics
-                const { count: visitsCount, error: visitsError } = await supabase
-                    .from('analytics')
-                    .select('*', { count: 'exact', head: true });
-                
-                if (visitsError) throw visitsError;
-                statTotalVisits.textContent = visitsCount || 0;
-
-                // 2. Fetch Candidates list
-                const { data: users, error: usersError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (usersError) throw usersError;
-                
-                statTotalUsers.textContent = users.length;
-                const premiumCount = users.filter(u => u.subscription_status === "Premium").length;
-                statPremiumUsers.textContent = premiumCount;
-
-                renderCandidatesTable(users);
-
-                // 3. Fetch Jobs list
-                const { data: jobs, error: jobsError } = await supabase
-                    .from('jobs')
-                    .select('*')
-                    .order('is_pinned', { ascending: false })
-                    .order('deadline_date', { ascending: true });
-                
-                if (jobsError) throw jobsError;
-                
-                renderJobsTable(jobs);
-
-            } catch (err) {
-                console.error("Dashboard loading error:", err);
-                showToast("Erreur lors de la lecture des données cloud.", "error");
-            }
-        }
-
-        // RENDER CANDIDATES TABLE
+        // 4. Candidates list rendering
         function renderCandidatesTable(users) {
+            if (!candidatesCountTag || !candidatesTableBody) return;
             candidatesCountTag.textContent = `${users.length} candidat(s) inscrit(s)`;
             
             if (users.length === 0) {
@@ -393,12 +287,10 @@
             users.forEach(user => {
                 const tr = document.createElement('tr');
                 
-                // Subscription Badge
                 const isPremium = user.subscription_status === "Premium";
                 const badgeClass = isPremium ? "badge-premium" : "badge-free";
                 const badgeText = isPremium ? `Premium (${user.subscription_days_remaining || 0}j)` : "Gratuit";
 
-                // Format registration date
                 const regDate = new Date(user.created_at).toLocaleDateString('fr-FR', {
                     day: 'numeric',
                     month: 'short',
@@ -440,8 +332,9 @@
             });
         }
 
-        // RENDER JOBS TABLE
+        // 5. Jobs list rendering
         function renderJobsTable(jobs) {
+            if (!jobsTableBody) return;
             if (jobs.length === 0) {
                 jobsTableBody.innerHTML = `
                     <tr>
@@ -460,7 +353,6 @@
                     tr.style.backgroundColor = "rgba(245, 158, 11, 0.02)";
                 }
 
-                // Format deadline date
                 let limit = "Aucune limite";
                 if (job.deadline_date) {
                     limit = new Date(job.deadline_date).toLocaleDateString('fr-FR', {
@@ -509,7 +401,55 @@
             });
         }
 
-        // ACTION : TOGGLE USER PREMIUM STATUS (For Mobile Money cash payments)
+        // 6. Load Data from Supabase
+        async function loadDashboardData() {
+            console.log("⚙️ Loading dashboard data from Supabase...");
+            if (!supabase) {
+                showToast("Erreur: Supabase n'est pas configuré.", "error");
+                return;
+            }
+
+            try {
+                // Fetch visitors stats
+                const { count: visitsCount, error: visitsError } = await supabase
+                    .from('analytics')
+                    .select('*', { count: 'exact', head: true });
+                
+                if (visitsError) console.warn("Analytics fetch error:", visitsError);
+                if (statTotalVisits) statTotalVisits.textContent = visitsCount || 0;
+
+                // Fetch Candidates list
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (usersError) throw usersError;
+                
+                if (statTotalUsers) statTotalUsers.textContent = users.length;
+                const premiumCount = users.filter(u => u.subscription_status === "Premium").length;
+                if (statPremiumUsers) statPremiumUsers.textContent = premiumCount;
+
+                renderCandidatesTable(users);
+
+                // Fetch Jobs list
+                const { data: jobs, error: jobsError } = await supabase
+                    .from('jobs')
+                    .select('*')
+                    .order('is_pinned', { ascending: false })
+                    .order('deadline_date', { ascending: true });
+                
+                if (jobsError) throw jobsError;
+                
+                renderJobsTable(jobs);
+
+            } catch (err) {
+                console.error("❌ Dashboard loading error:", err);
+                showToast("Erreur lors de la lecture des données cloud.", "error");
+            }
+        }
+
+        // 7. Database Actions
         async function toggleUserSubscription(userId, currentStatus) {
             const nextStatus = currentStatus === "Premium" ? "Gratuit" : "Premium";
             const nextDays = currentStatus === "Premium" ? 0 : 30;
@@ -533,12 +473,11 @@
                 showToast(`Statut du candidat mis à jour : ${nextStatus} !`, "success");
                 loadDashboardData();
             } catch (err) {
-                console.error("Subscription update error:", err);
+                console.error("❌ Subscription update error:", err);
                 showToast("Impossible de modifier l'abonnement.", "error");
             }
         }
 
-        // ACTION : DELETE CANDIDATE PROFILE
         async function deleteCandidate(userId, fullname) {
             if (!confirm(`ATTENTION : Voulez-vous vraiment supprimer définitivement le candidat "${fullname}" de la base de données ? Cette action est irréversible.`)) {
                 return;
@@ -554,12 +493,11 @@
                 showToast(`Candidat "${fullname}" supprimé de la base.`, "success");
                 loadDashboardData();
             } catch (err) {
-                console.error("User deletion error:", err);
+                console.error("❌ User deletion error:", err);
                 showToast("Impossible de supprimer le profil.", "error");
             }
         }
 
-        // ACTION : TOGGLE JOB PINNING
         async function toggleJobPin(jobId, currentPinned) {
             try {
                 const { error } = await supabase
@@ -571,12 +509,11 @@
                 showToast(!currentPinned ? "Offre épinglée à la Une !" : "Offre retirée de la Une.", "success");
                 loadDashboardData();
             } catch (err) {
-                console.error("Pin update error:", err);
+                console.error("❌ Pin update error:", err);
                 showToast("Impossible de modifier l'épinglage.", "error");
             }
         }
 
-        // ACTION : DELETE JOB OFFER
         async function deleteJob(jobId, title) {
             if (!confirm(`Voulez-vous supprimer l'offre d'emploi : "${title}" ?`)) {
                 return;
@@ -592,22 +529,11 @@
                 showToast("Offre d'emploi supprimée définitivement.", "success");
                 loadDashboardData();
             } catch (err) {
-                console.error("Job deletion error:", err);
+                console.error("❌ Job deletion error:", err);
                 showToast("Impossible de supprimer cette offre.", "error");
             }
         }
 
-        // ACTION : OPEN JOB MODAL (CREATE NEW)
-        btnAddJobModal.addEventListener('click', () => {
-            isEditing = false;
-            document.getElementById('modal-job-title').textContent = "Créer une offre d'emploi";
-            jobForm.reset();
-            document.getElementById('form-job-id').value = "";
-            document.getElementById('form-job-source').value = "Publié en direct";
-            jobModal.classList.add('open');
-        });
-
-        // ACTION : OPEN JOB MODAL (EDIT EXISTING)
         async function openEditJobModal(jobId) {
             try {
                 const { data: job, error } = await supabase
@@ -630,73 +556,175 @@
                 document.getElementById('form-job-desc').value = job.description;
                 document.getElementById('form-job-pinned').checked = job.is_pinned || false;
 
-                jobModal.classList.add('open');
+                if (jobModal) jobModal.classList.add('open');
 
             } catch (err) {
-                console.error("Error loading job details:", err);
+                console.error("❌ Error loading job details:", err);
                 showToast("Erreur de chargement de l'offre.", "error");
             }
         }
 
         function closeJobModal() {
-            jobModal.classList.remove('open');
+            if (jobModal) jobModal.classList.remove('open');
         }
 
-        // FORM SUBMISSION (CREATE/EDIT SAVE)
-        jobForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const jobId = document.getElementById('form-job-id').value;
-            const title = document.getElementById('form-job-title').value.trim();
-            const company = document.getElementById('form-job-company').value.trim();
-            const location = document.getElementById('form-job-location').value.trim();
-            const deadlineDate = document.getElementById('form-job-deadline').value || null;
-            const source = document.getElementById('form-job-source').value.trim() || "Publié en direct";
-            const url = document.getElementById('form-job-url').value.trim() || "https://emploi.lefaso.net";
-            const description = document.getElementById('form-job-desc').value.trim();
-            const isPinned = document.getElementById('form-job-pinned').checked;
-
-            const payload = {
-                title,
-                company,
-                location,
-                deadline_date: deadlineDate,
-                source,
-                url,
-                description,
-                is_pinned: isPinned,
-                scraped_at: new Date().toISOString()
-            };
-
-            try {
-                if (isEditing && jobId) {
-                    // Update existing
-                    const { error } = await supabase
-                        .from('jobs')
-                        .update(payload)
-                        .eq('id', jobId);
-
-                    if (error) throw error;
-                    showToast("Offre d'emploi modifiée avec succès !", "success");
-                } else {
-                    // Create new
-                    const newId = `job_manual_${Date.now()}`;
-                    const { error } = await supabase
-                        .from('jobs')
-                        .insert({ id: newId, ...payload });
-
-                    if (error) throw error;
-                    showToast("Nouvelle offre créée !", "success");
+        // 8. Auth Logic
+        function handleLogin() {
+            const enteredCode = passcodeInput.value.trim();
+            console.log("🔑 Login attempt with code:", enteredCode);
+            if (enteredCode === "admin2026") {
+                if (authErrorMsg) authErrorMsg.style.display = 'none';
+                if (lockScreen) lockScreen.style.display = 'none';
+                if (adminPanel) adminPanel.style.display = 'block';
+                showToast("Accès autorisé ! Chargement du tableau de bord...", "success");
+                
+                try {
+                    sessionStorage.setItem('admin_auth', 'true');
+                } catch (e) {
+                    console.warn("⚠️ sessionStorage non disponible:", e);
                 }
-
-                closeJobModal();
+                
                 loadDashboardData();
-
-            } catch (err) {
-                console.error("Error saving job:", err);
-                showToast("Impossible d'enregistrer les données.", "error");
+            } else {
+                console.warn("❌ Incorrect code entered.");
+                if (authErrorMsg) authErrorMsg.style.display = 'block';
+                passcodeInput.value = '';
+                passcodeInput.focus();
             }
+        }
+
+        function handleLogout() {
+            try {
+                sessionStorage.removeItem('admin_auth');
+            } catch (e) {
+                console.warn(e);
+            }
+            if (lockScreen) lockScreen.style.display = 'block';
+            if (adminPanel) adminPanel.style.display = 'none';
+            passcodeInput.value = '';
+            showToast("Session fermée.", "info");
+        }
+
+        function initAdminSession() {
+            console.log("⚙️ Checking active session...");
+            let isAuthenticated = false;
+            try {
+                isAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
+            } catch (e) {
+                console.warn("⚠️ sessionStorage check failed:", e);
+            }
+
+            if (isAuthenticated) {
+                console.log("🔑 Authenticated session found.");
+                if (lockScreen) lockScreen.style.display = 'none';
+                if (adminPanel) adminPanel.style.display = 'block';
+                loadDashboardData();
+            } else {
+                console.log("🔒 No authenticated session found. Showing lock screen.");
+                if (passcodeInput) passcodeInput.focus();
+            }
+        }
+
+        // 9. Attach Event Listeners
+        if (btnLoginAdmin) {
+            btnLoginAdmin.addEventListener('click', handleLogin);
+        }
+        if (passcodeInput) {
+            passcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+        }
+        if (btnLogoutAdmin) {
+            btnLogoutAdmin.addEventListener('click', handleLogout);
+        }
+
+        // Tab switches
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const targetId = tab.getAttribute('data-target');
+                const targetSec = document.getElementById(targetId);
+                if (targetSec) targetSec.classList.add('active');
+            });
         });
+
+        // Add Job click
+        if (btnAddJobModal) {
+            btnAddJobModal.addEventListener('click', () => {
+                isEditing = false;
+                document.getElementById('modal-job-title').textContent = "Créer une offre d'emploi";
+                if (jobForm) jobForm.reset();
+                document.getElementById('form-job-id').value = "";
+                document.getElementById('form-job-source').value = "Publié en direct";
+                if (jobModal) jobModal.classList.add('open');
+            });
+        }
+
+        // Form Submit
+        if (jobForm) {
+            jobForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const jobId = document.getElementById('form-job-id').value;
+                const title = document.getElementById('form-job-title').value.trim();
+                const company = document.getElementById('form-job-company').value.trim();
+                const location = document.getElementById('form-job-location').value.trim();
+                const deadlineDate = document.getElementById('form-job-deadline').value || null;
+                const source = document.getElementById('form-job-source').value.trim() || "Publié en direct";
+                const url = document.getElementById('form-job-url').value.trim() || "https://emploi.lefaso.net";
+                const description = document.getElementById('form-job-desc').value.trim();
+                const isPinned = document.getElementById('form-job-pinned').checked;
+
+                const payload = {
+                    title,
+                    company,
+                    location,
+                    deadline_date: deadlineDate,
+                    source,
+                    url,
+                    description,
+                    is_pinned: isPinned,
+                    scraped_at: new Date().toISOString()
+                };
+
+                try {
+                    if (isEditing && jobId) {
+                        const { error } = await supabase
+                            .from('jobs')
+                            .update(payload)
+                            .eq('id', jobId);
+
+                        if (error) throw error;
+                        showToast("Offre d'emploi modifiée avec succès !", "success");
+                    } else {
+                        const newId = `job_manual_${Date.now()}`;
+                        const { error } = await supabase
+                            .from('jobs')
+                            .insert({ id: newId, ...payload });
+
+                        if (error) throw error;
+                        showToast("Nouvelle offre créée !", "success");
+                    }
+
+                    closeJobModal();
+                    loadDashboardData();
+
+                } catch (err) {
+                    console.error("❌ Error saving job:", err);
+                    showToast("Impossible d'enregistrer les données.", "error");
+                }
+            });
+        }
+
+        // Initialize session immediately or on DOM ready
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initAdminSession);
+        } else {
+            initAdminSession();
+        }
     </script>
 </body>
 </html>
