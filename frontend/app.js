@@ -1173,6 +1173,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('user_profile', JSON.stringify(profile));
                     localStorage.setItem('sub_status', subscriptionStatus);
                     localStorage.setItem('sub_days', daysRemaining.toString());
+                } else if (error) {
+                    console.warn("Supabase fetch error:", error);
+                } else {
+                    // L'utilisateur n'existe plus dans Supabase (supprimé) -> Nettoyage local !
+                    console.log("🧹 Profil introuvable dans Supabase (supprimé). Nettoyage local...");
+                    profile = null;
+                    subscriptionStatus = 'Gratuit';
+                    daysRemaining = 0;
+                    localStorage.removeItem('user_profile');
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('sub_status');
+                    localStorage.removeItem('sub_days');
                 }
             } catch (err) {
                 console.warn("Erreur de chargement Supabase initial:", err);
