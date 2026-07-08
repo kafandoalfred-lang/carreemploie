@@ -7,20 +7,22 @@
 }
 
 :root {
-    --bg-dark: #070b12; /* Fond anthracite professionnel unifié */
-    --panel-bg: rgba(18, 25, 33, 0.75); /* Slate transparent */
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
+    --bg-dark: #f8fafc; /* Fond gris-bleu clair ultra-propre (LinkedIn style) */
+    --panel-bg: #ffffff; /* Panneaux blancs et solides */
+    --panel-border: #e2e8f0; /* Bordures subtiles claires */
+    --text-primary: #0f172a; /* Texte principal noir bleuâtre profond */
+    --text-secondary: #475569; /* Texte secondaire gris ardoise */
     --primary-color: #10b981; /* Vert Émeraude */
-    --primary-glow: rgba(16, 185, 129, 0.35);
+    --primary-glow: rgba(16, 185, 129, 0.08);
     --secondary-color: #059669; /* Vert plus foncé */
-    --secondary-glow: rgba(5, 150, 105, 0.35);
-    --gold-color: #f59e0b; /* Or Ambré pour le Premium */
-    --gold-glow: rgba(245, 158, 11, 0.4);
+    --secondary-glow: rgba(5, 150, 105, 0.08);
+    --gold-color: #b45309; /* Or/Bronze de haute qualité pour le Premium */
+    --gold-glow: rgba(180, 83, 9, 0.15);
     --accent-error: #ef4444;
-    --input-bg: rgba(10, 15, 20, 0.85);
-    --input-focus: rgba(16, 185, 129, 0.15);
+    --input-bg: #ffffff;
+    --input-focus: rgba(16, 185, 129, 0.05);
+    --nav-bg: rgba(255, 255, 255, 0.95);
+    --card-bg: #ffffff;
 }
 
 body {
@@ -50,7 +52,7 @@ body {
     position: absolute;
     border-radius: 50%;
     filter: blur(120px);
-    opacity: 0.3;
+    opacity: 0.08; /* Rendu pastel doux sur fond clair */
     pointer-events: none;
 }
 
@@ -59,7 +61,7 @@ body {
     right: 15%;
     width: 450px;
     height: 450px;
-    background: radial-gradient(circle, var(--primary-color) 0%, rgba(0,0,0,0) 70%);
+    background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
 }
 
 .circle-2 {
@@ -67,7 +69,7 @@ body {
     left: 15%;
     width: 500px;
     height: 500px;
-    background: radial-gradient(circle, var(--gold-color) 0%, rgba(0,0,0,0) 70%);
+    background: radial-gradient(circle, var(--gold-color) 0%, transparent 70%);
 }
 
 /* Container */
@@ -87,10 +89,11 @@ body {
     left: 0;
     width: 100%;
     height: 70px;
-    background: rgba(7, 10, 19, 0.9);
+    background: var(--nav-bg);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-bottom: 1px solid var(--panel-border);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
     z-index: 1000;
 }
 
@@ -112,6 +115,7 @@ body {
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -0.5px;
+    color: var(--text-primary);
 }
 
 .brand-icon {
@@ -411,8 +415,8 @@ body {
 }
 
 .home-job-card {
-    background: rgba(10, 14, 22, 0.95); /* Plus sombre pour ressortir */
-    border: 1.5px dashed rgba(16, 185, 129, 0.2); /* Pointillé émeraude */
+    background: var(--card-bg);
+    border: 1px solid var(--panel-border);
     border-radius: 16px;
     padding: 22px;
     cursor: pointer;
@@ -420,13 +424,13 @@ body {
     display: flex;
     flex-direction: column;
     position: relative;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .home-job-card:hover {
     transform: translateY(-5px);
-    border-style: solid;
     border-color: var(--primary-color);
-    box-shadow: 0 8px 20px var(--primary-glow);
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.1), 0 4px 6px -4px rgba(16, 185, 129, 0.1);
 }
 
 .home-job-header {
@@ -519,21 +523,21 @@ body {
 }
 
 .testimonial-card {
-    background: rgba(10, 14, 22, 0.95); /* Plus sombre */
-    border: 1px solid rgba(245, 158, 11, 0.15); /* Ligne or subtile */
+    background: var(--card-bg);
+    border: 1px solid var(--panel-border);
     border-radius: 20px;
     padding: 25px;
     display: flex;
     flex-direction: column;
     gap: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
 }
 
 .testimonial-card:hover {
     transform: translateY(-5px);
     border-color: var(--gold-color);
-    box-shadow: 0 8px 20px var(--gold-glow);
+    box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.1), 0 4px 6px -4px rgba(245, 158, 11, 0.1);
 }
 
 .testimonial-rating {
@@ -1358,7 +1362,7 @@ body {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    background-color: #161e24;
+    background-color: var(--panel-bg);
     border: 1px solid var(--primary-color);
     color: var(--text-primary);
     padding: 16px 24px;
@@ -1366,7 +1370,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
     z-index: 1000;
     transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
 }
