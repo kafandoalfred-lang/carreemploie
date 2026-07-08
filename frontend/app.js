@@ -415,18 +415,63 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loadMoreContainer) {
             loadMoreContainer.innerHTML = '';
             
-            // On affiche le bouton s'il y a plus d'offres régulières que la taille d'une page (6)
+            // On affiche les boutons de navigation s'il y a plus d'offres régulières que la taille d'une page (6)
             if (regularJobs.length > regularPageSize) {
-                const btnLoadMore = document.createElement('button');
-                btnLoadMore.className = 'btn-search';
-                btnLoadMore.style.padding = '12px 24px';
-                btnLoadMore.style.fontWeight = '600';
-                btnLoadMore.innerHTML = '<i class="fa-solid fa-rotate"></i> Découvrir d\'autres offres <i class="fa-solid fa-circle-chevron-right"></i>';
-                btnLoadMore.addEventListener('click', () => {
-                    regularStartIndex += regularPageSize;
+                const navBtnGroup = document.createElement('div');
+                navBtnGroup.style.display = 'flex';
+                navBtnGroup.style.justifyContent = 'center';
+                navBtnGroup.style.gap = '15px';
+                navBtnGroup.style.marginTop = '10px';
+
+                // Bouton Précédent (Retour aux offres déjà vues)
+                const btnPrev = document.createElement('button');
+                btnPrev.className = 'btn-admin-cancel';
+                btnPrev.style.padding = '12px 24px';
+                btnPrev.style.fontWeight = '600';
+                btnPrev.style.border = '1px solid var(--panel-border)';
+                btnPrev.style.borderRadius = '8px';
+                btnPrev.style.cursor = 'pointer';
+                btnPrev.style.background = 'var(--panel-border)';
+                btnPrev.style.color = 'var(--text-primary)';
+                btnPrev.innerHTML = '<i class="fa-solid fa-circle-chevron-left"></i> Offres précédentes';
+                btnPrev.addEventListener('click', () => {
+                    regularStartIndex -= regularPageSize;
+                    if (regularStartIndex < 0) {
+                        regularStartIndex = Math.max(0, Math.floor((regularJobs.length - 1) / regularPageSize) * regularPageSize);
+                    }
                     initHomeJobsGrid();
+                    const jobSection = document.querySelector('.latest-jobs-section');
+                    if (jobSection) {
+                        jobSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                 });
-                loadMoreContainer.appendChild(btnLoadMore);
+
+                // Bouton Suivant (Découverte de nouvelles offres)
+                const btnNext = document.createElement('button');
+                btnNext.className = 'btn-search';
+                btnNext.style.padding = '12px 24px';
+                btnNext.style.fontWeight = '600';
+                btnNext.style.borderRadius = '8px';
+                btnNext.style.cursor = 'pointer';
+                btnNext.style.border = 'none';
+                btnNext.style.background = 'var(--primary-color)';
+                btnNext.style.color = 'white';
+                btnNext.innerHTML = 'Découvrir d\'autres offres <i class="fa-solid fa-circle-chevron-right"></i>';
+                btnNext.addEventListener('click', () => {
+                    regularStartIndex += regularPageSize;
+                    if (regularStartIndex >= regularJobs.length) {
+                        regularStartIndex = 0;
+                    }
+                    initHomeJobsGrid();
+                    const jobSection = document.querySelector('.latest-jobs-section');
+                    if (jobSection) {
+                        jobSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+
+                navBtnGroup.appendChild(btnPrev);
+                navBtnGroup.appendChild(btnNext);
+                loadMoreContainer.appendChild(navBtnGroup);
             }
         }
     }
