@@ -347,18 +347,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- INITIALISATION DE LA GRILLE D'ACCUEIL AVEC TOUS LES JOBS ACTIFS ---
+    let homeJobsLimit = 8;
+
     async function initHomeJobsGrid() {
         const homeJobsGrid = document.getElementById('home-jobs-grid');
+        const loadMoreContainer = document.getElementById('load-more-container');
         if (!homeJobsGrid) return;
         
         homeJobsGrid.innerHTML = '';
         const jobsList = await getActiveJobsList();
         
-        // Prendre toutes les offres actives
-        const activeJobs = jobsList.filter(job => new Date(job.deadlineDate) >= currentDate);
-        const latestJobs = activeJobs; 
+        // Prendre toutes les offres actives non expirées et non en attente (sans préfixe pending_)
+        const activeJobs = jobsList.filter(job => {
+            const isNotExpired = new Date(job.deadlineDate) >= currentDate;
+            const isNotPending = !job.id.startsWith('pending_');
+            return isNotExpired && isNotPending;
+        });
+        
+        // Récupérer les 8 premières (ou homeJobsLimit)
+        const visibleJobs = activeJobs.slice(0, homeJobsLimit);
 
-        latestJobs.forEach(job => {
+        visibleJobs.forEach(job => {
             const card = document.createElement('div');
             card.className = job.isPinned ? "home-job-card job-pinned" : "home-job-card";
             card.setAttribute('data-job-title', job.title);
@@ -379,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="home-job-score">94% match IA</span>
                 </div>
                 <p class="home-job-desc">${job.description.substring(0, 120)}...</p>
-                <div class="home-job-footer" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                <div class="home-job-footer" style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; margin-bottom: 10px;">
                     <span class="home-job-loc"><i class="fa-solid fa-location-dot"></i> ${job.location}</span>
                     <span>Limite : ${dateLimitStr}</span>
                 </div>
@@ -389,6 +398,23 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             homeJobsGrid.appendChild(card);
         });
+
+        // Gérer l'affichage du bouton "Charger plus"
+        if (loadMoreContainer) {
+            loadMoreContainer.innerHTML = '';
+            if (activeJobs.length > homeJobsLimit) {
+                const btnLoadMore = document.createElement('button');
+                btnLoadMore.className = 'btn-search';
+                btnLoadMore.style.padding = '12px 24px';
+                btnLoadMore.style.fontWeight = '600';
+                btnLoadMore.innerHTML = '<i class="fa-solid fa-spinner"></i> Charger plus d\'offres';
+                btnLoadMore.addEventListener('click', () => {
+                    homeJobsLimit += 8;
+                    initHomeJobsGrid();
+                });
+                loadMoreContainer.appendChild(btnLoadMore);
+            }
+        }
     }
 
 
@@ -1360,5 +1386,61 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.add('hidden');
         }, 4000);
+    }
+
+    // Espace Recruteur : Soumission d'une offre d'emploi
+    const employerForm = document.getElementById('employer-submit-form');
+    if (employerForm) {
+        employerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const company = document.getElementById('emp-company').value.trim();
+            const title = document.getElementById('emp-title').value.trim();
+            const location = document.getElementById('emp-location').value.trim();
+            const deadlineDate = document.getElementById('emp-deadline').value;
+            const contactRaw = document.getElementById('emp-contact').value.trim();
+            const description = document.getElementById('emp-description').value.trim();
+
+            if (!supabase) {
+                showToast("Service de soumission indisponible (Supabase déconnecté).", "error");
+                return;
+            }
+
+            // Formater le contact de postulation (mailto:, wa.me, ou brut)
+            let formattedUrl = contactRaw;
+            if (contactRaw.includes('@') && !contactRaw.startsWith('mailto:')) {
+                formattedUrl = `mailto:${contactRaw}`;
+            } else if (/^\+?[0-9\s]{8,}$/.test(contactRaw.replace(/[\s\-\(\)]/g, ''))) {
+                const cleanPhone = contactRaw.replace(/[^0-9]/g, '');
+                formattedUrl = `https://wa.me/${cleanPhone}`;
+            }
+
+            // Générer un ID unique temporaire préfixé par pending_
+            const pendingId = `pending_emp_${Date.now()}`;
+
+            try {
+                const { error } = await supabase.from('jobs').insert({
+                    id: pendingId,
+                    title: title,
+                    company: company,
+                    location: location,
+                    description: description,
+                    source: "employer_submission",
+                    url: formattedUrl,
+                    deadline_date: deadlineDate,
+                    scraped_at: new Date().toISOString()
+                });
+
+                if (error) throw error;
+
+                showToast("Votre offre a été soumise avec succès ! Elle apparaîtra après validation.");
+                employerForm.reset();
+                switchTab('tab-home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (err) {
+                console.error("Employer submit error:", err);
+                showToast("Une erreur est survenue lors de la soumission de l'offre.", "error");
+            }
+        });
     }
 });

@@ -29,6 +29,7 @@
                 <li class="nav-link active" data-tab="tab-home">Accueil</li>
                 <li class="nav-link" data-tab="tab-search">Recherche Directe</li>
                 <li class="nav-link" data-tab="tab-register">Alerte IA</li>
+                <li class="nav-link" data-tab="tab-employer">Publier une Offre</li>
                 <li class="nav-link" data-tab="tab-profile">Mon Espace</li>
             </ul>
             <div class="nav-status-badge" id="nav-badge">
@@ -88,6 +89,7 @@
                 <div id="home-jobs-grid" class="home-jobs-grid">
                     <!-- Les 4 offres seront injectées ici par JS -->
                 </div>
+                <div id="load-more-container" style="text-align: center; margin-top: 30px;"></div>
             </section>
 
             <!-- Nouveauté : Section Témoignages de réussite locale -->
@@ -263,6 +265,57 @@
                     <!-- Les cartes injectées par JS -->
                 </div>
             </section>
+        </section>
+
+        <!-- PAGE 3.5: ESPACE RECRUTEUR -->
+        <section id="tab-employer" class="tab-content">
+            <header class="page-header">
+                <h2><i class="fa-solid fa-building-user"></i> Espace Recruteur</h2>
+                <p>Publiez vos offres d'emploi pour cibler instantanément des milliers de candidats qualifiés au Burkina Faso.</p>
+            </header>
+
+            <div class="glass-panel" style="max-width: 700px; margin: 0 auto; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); border-radius: 16px; border: 1px solid var(--panel-border); background: var(--panel-bg);">
+                <h3 style="margin-bottom: 20px; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-paper-plane text-success"></i> Soumettre une offre d'emploi</h3>
+                
+                <form id="employer-submit-form" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-building"></i> Nom de l'Entreprise</label>
+                            <input type="text" id="emp-company" placeholder="Ex: Groupe Faso-Construction" required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none;">
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-briefcase"></i> Titre du Poste</label>
+                            <input type="text" id="emp-title" placeholder="Ex: Comptable Principal H/F" required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-location-dot"></i> Lieu d'Affectation</label>
+                            <input type="text" id="emp-location" placeholder="Ex: Ouagadougou" required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none;">
+                        </div>
+                        <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-calendar-check"></i> Date Limite</label>
+                            <input type="date" id="emp-deadline" required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none;">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-link"></i> Contact de Postulation Direct (Email ou numéro WhatsApp/Téléphone)</label>
+                        <input type="text" id="emp-contact" placeholder="Ex: email@candidature.com ou +226 70..." required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none;">
+                        <small style="color: var(--text-secondary); font-size: 0.78rem;">Indiquez le canal par lequel vous souhaitez recevoir directement les CV.</small>
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"><i class="fa-solid fa-file-invoice"></i> Description de l'Offre & Critères</label>
+                        <textarea id="emp-description" rows="6" placeholder="Renseignez les missions, les tâches, les diplômes requis, les qualifications recherchées et les conditions de dépôt..." required style="width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-primary); outline: none; resize: vertical; line-height: 1.5;"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-search" style="width: 100%; font-weight: 600; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; border: none; cursor: pointer;">
+                        <i class="fa-solid fa-circle-check"></i> Soumettre l'offre pour validation
+                    </button>
+                </form>
+            </div>
         </section>
 
         <!-- PAGE 4: MON ESPACE -->

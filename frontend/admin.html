@@ -349,8 +349,12 @@
             jobsTableBody.innerHTML = "";
             jobs.forEach(job => {
                 const tr = document.createElement('tr');
+                const isPending = job.id.startsWith('pending_');
+                
                 if (job.is_pinned) {
                     tr.style.backgroundColor = "rgba(245, 158, 11, 0.02)";
+                } else if (isPending) {
+                    tr.style.backgroundColor = "rgba(245, 158, 11, 0.05)";
                 }
 
                 let limit = "Aucune limite";
@@ -362,10 +366,32 @@
                     });
                 }
 
+                // Bouton d'action principal (Épingler ou Approuver)
+                let mainActionBtn = '';
+                if (isPending) {
+                    mainActionBtn = `
+                        <button onclick="approveJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
+                                class="btn-action-icon edit" 
+                                style="color: var(--success-color); background: rgba(16, 185, 129, 0.1);" 
+                                title="Approuver et publier cette offre">
+                            <i class="fa-solid fa-check"></i>
+                        </button>
+                    `;
+                } else {
+                    mainActionBtn = `
+                        <button onclick="toggleJobPin('${job.id}', ${job.is_pinned})" 
+                                class="btn-action-icon pin ${job.is_pinned ? 'pinned' : ''}" 
+                                title="${job.is_pinned ? 'Retirer de la Une' : 'Mettre à la Une tout en haut'}">
+                            <i class="fa-solid fa-thumbtack"></i>
+                        </button>
+                    `;
+                }
+
                 tr.innerHTML = `
                     <td>
                         <span style="color: var(--text-primary); font-weight: 600;">${job.title}</span>
                         ${job.is_pinned ? ' <span style="color: var(--gold-color); font-size: 0.8rem; font-weight: bold; margin-left: 5px;">★ À la Une</span>' : ''}
+                        ${isPending ? ' <span style="color: var(--gold-color); background: rgba(245, 158, 11, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 5px;"><i class="fa-solid fa-clock"></i> En Attente</span>' : ''}
                     </td>
                     <td><strong style="color: var(--text-secondary);">${job.company}</strong></td>
                     <td>
@@ -379,17 +405,13 @@
                     </td>
                     <td>
                         <div class="admin-actions-cell">
-                            <button onclick="toggleJobPin('${job.id}', ${job.is_pinned})" 
-                                    class="btn-action-icon pin ${job.is_pinned ? 'pinned' : ''}" 
-                                    title="${job.is_pinned ? 'Retirer de la Une' : 'Mettre à la Une tout en haut'}">
-                                <i class="fa-solid fa-thumbtack"></i>
-                            </button>
+                            ${mainActionBtn}
                             <button onclick="openEditJobModal('${job.id}')" 
                                     class="btn-action-icon edit" 
                                     title="Modifier cette offre">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
-                            <button onclick="deleteJob('${job.id}', '${job.title}')" 
+                            <button onclick="deleteJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
                                     class="btn-action-icon delete" 
                                     title="Supprimer cette offre">
                                 <i class="fa-solid fa-trash-can"></i>
@@ -399,6 +421,33 @@
                 `;
                 jobsTableBody.appendChild(tr);
             });
+        }
+
+        // Fonction d'approbation et publication d'une offre d'un recruteur
+        async function approveJob(jobId, jobTitle) {
+            if (!confirm(`Approuver l'offre "${jobTitle}" et la publier sur le site ?`)) return;
+            try {
+                // 1. Récupérer l'offre en attente
+                const { data: job, error: fetchErr } = await supabaseClient.from('jobs').select('*').eq('id', jobId).single();
+                if (fetchErr || !job) throw new Error("Impossible de récupérer l'offre.");
+
+                // 2. Insérer une copie avec un ID publié (sans 'pending_')
+                const publishedId = jobId.replace('pending_', 'job_');
+                const publishedJob = { ...job, id: publishedId };
+                
+                const { error: insertErr } = await supabaseClient.from('jobs').insert(publishedJob);
+                if (insertErr) throw insertErr;
+
+                // 3. Supprimer l'offre en attente
+                const { error: deleteErr } = await supabaseClient.from('jobs').delete().eq('id', jobId);
+                if (deleteErr) throw deleteErr;
+
+                showToast(`Offre "${jobTitle}" approuvée et publiée avec succès !`);
+                loadDashboardData();
+            } catch (err) {
+                console.error("Approve error:", err);
+                showToast("Erreur lors de l'approbation de l'offre.", "error");
+            }
         }
 
         // 6. Load Data from Supabase
