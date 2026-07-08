@@ -1394,6 +1394,8 @@ document.addEventListener('DOMContentLoaded', () => {
         employerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const privateEmail = document.getElementById('emp-contact-email').value.trim();
+            const privatePhone = document.getElementById('emp-contact-phone').value.trim();
             const company = document.getElementById('emp-company').value.trim();
             const title = document.getElementById('emp-title').value.trim();
             const location = document.getElementById('emp-location').value.trim();
@@ -1415,6 +1417,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 formattedUrl = `https://wa.me/${cleanPhone}`;
             }
 
+            // Annexer les contacts privés à la description pour consultation par l'admin
+            const fullDescription = `${description}\n\n📢 **[CONTACTS RECRUTEUR PRIVÉS - ADMIN]**\n📧 Email: ${privateEmail}\n📞 Téléphone: ${privatePhone}`;
+
             // Générer un ID unique temporaire préfixé par pending_
             const pendingId = `pending_emp_${Date.now()}`;
 
@@ -1424,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: title,
                     company: company,
                     location: location,
-                    description: description,
+                    description: fullDescription,
                     source: "employer_submission",
                     url: formattedUrl,
                     deadline_date: deadlineDate,
