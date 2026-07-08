@@ -193,13 +193,22 @@ const SIMULATED_FACEBOOK_POSTS = [
   }
 ];
 
-function getRequest(url) {
+function getRequest(url, redirectCount = 0) {
+  if (redirectCount > 3) {
+    return Promise.reject(new Error("Trop de redirections"));
+  }
   return new Promise((resolve, reject) => {
     https.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
       }
     }, (res) => {
+      // Suivre la redirection si HTTP 3xx
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const redirectUrl = new URL(res.headers.location, url).toString();
+        return getRequest(redirectUrl, redirectCount + 1).then(resolve).catch(reject);
+      }
+
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
@@ -274,18 +283,22 @@ function parseBfemploiHtml(html) {
 
 function parseUnjobsHtml(html) {
   const jobs = [];
-  const matches = html.matchAll(/href=["'](\/vacancies\/[0-9]+)["'][^>]*>([^<]+)/gi);
+  const matches = html.matchAll(/href=["']([^"']*(?:unjobs\.org)?\/vacancies\/[0-9]+)["'][^>]*>([^<]+)/gi);
   
   for (const m of matches) {
-    const rawUrl = m[1];
+    const rawPathOrUrl = m[1];
     const text = m[2].trim();
     
     const titleParts = text.split(',');
     const title = titleParts[0].trim();
     const location = titleParts[1] ? titleParts[1].trim() : "Ouagadougou";
     
-    const url = `https://unjobs.org${rawUrl}`;
-    const id = `job_unjobs_${rawUrl.replace('/vacancies/', '')}`;
+    const url = rawPathOrUrl.startsWith('http') 
+      ? rawPathOrUrl 
+      : `https://unjobs.org${rawPathOrUrl.startsWith('/') ? '' : '/'}${rawPathOrUrl}`;
+      
+    const vacancyIdMatch = rawPathOrUrl.match(/\/vacancies\/([0-9]+)/);
+    const id = `job_unjobs_${vacancyIdMatch ? vacancyIdMatch[1] : Date.now()}`;
     
     const company = "Organisation Internationale / ONU";
     const description = `Poste international pour le rôle de ${title} basé à ${location}. Veuillez consulter l'offre complète sur le portail UNjobs pour voir les critères et postuler.`;
