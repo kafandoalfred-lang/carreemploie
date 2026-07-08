@@ -272,6 +272,85 @@ function parseBfemploiHtml(html) {
   return jobs;
 }
 
+function parseUnjobsHtml(html) {
+  const jobs = [];
+  const matches = html.matchAll(/href=["'](\/vacancies\/[0-9]+)["'][^>]*>([^<]+)/gi);
+  
+  for (const m of matches) {
+    const rawUrl = m[1];
+    const text = m[2].trim();
+    
+    const titleParts = text.split(',');
+    const title = titleParts[0].trim();
+    const location = titleParts[1] ? titleParts[1].trim() : "Ouagadougou";
+    
+    const url = `https://unjobs.org${rawUrl}`;
+    const id = `job_unjobs_${rawUrl.replace('/vacancies/', '')}`;
+    
+    const company = "Organisation Internationale / ONU";
+    const description = `Poste international pour le rôle de ${title} basé à ${location}. Veuillez consulter l'offre complète sur le portail UNjobs pour voir les critères et postuler.`;
+    
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 20);
+    const deadlineDate = futureDate.toISOString().split('T')[0];
+
+    jobs.push({
+      id,
+      title,
+      company,
+      location,
+      description,
+      source: "unjobs.org",
+      url,
+      deadlineDate,
+      scrapedAt: new Date().toISOString()
+    });
+  }
+  return jobs;
+}
+
+function parseFaso7Html(html) {
+  const blocks = html.split('<li class="post-item');
+  const jobs = [];
+
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    
+    const urlMatch = block.match(/class=["']post-title["'][^>]*>\s*<a[^>]*href=["']([^"']+)["']/i) || block.match(/href=["'](https:\/\/faso7\.com\/20[0-9]{2}\/[^"']+)["']/i);
+    if (!urlMatch) continue;
+    const url = urlMatch[1];
+    
+    const titleMatch = block.match(/class=["']post-title["'][^>]*>\s*<a[^>]*>([^<]+)/i) || block.match(/aria-label=["']([^"']+)["']/i);
+    const title = titleMatch ? titleMatch[1].trim() : "Avis de Recrutement";
+
+    const id = `job_faso7_${url.replace('https://faso7.com/', '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    const descMatch = block.match(/class=["']post-excerpt["'][^>]*>([^<]+)/i) || block.match(/<p>([^<]+)<\/p>/i);
+    const description = descMatch ? descMatch[1].trim() : `Avis de recrutement publié sur Faso7 : ${title}. Veuillez consulter les détails complets pour postuler.`;
+
+    const location = "Ouagadougou";
+    const company = "Structure Partenaire (via Faso7)";
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 20);
+    const deadlineDate = futureDate.toISOString().split('T')[0];
+
+    jobs.push({
+      id,
+      title,
+      company,
+      location,
+      description,
+      source: "faso7.com",
+      url,
+      deadlineDate,
+      scrapedAt: new Date().toISOString()
+    });
+  }
+
+  return jobs;
+}
+
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
@@ -506,6 +585,46 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler bfemploi.com :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : unjobs.org
+    console.log("\n🌐 Crawling en direct de unjobs.org...");
+    try {
+      const unjobsHtml = await getRequest("https://unjobs.org/duty_stations/oua");
+      const unjobsJobs = parseUnjobsHtml(unjobsHtml);
+      console.log(`   ↳ ${unjobsJobs.length} offres extraites de unjobs.org.`);
+      
+      unjobsJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL UNJOBS] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler unjobs.org :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : faso7.com
+    console.log("\n🌐 Crawling en direct de faso7.com...");
+    try {
+      const faso7Html = await getRequest("https://faso7.com/tag/recrutement/");
+      const faso7Jobs = parseFaso7Html(faso7Html);
+      console.log(`   ↳ ${faso7Jobs.length} offres extraites de faso7.com.`);
+      
+      faso7Jobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL FASO7] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler faso7.com :", crawlErr.message);
     }
 
     // -- STRUCTURATION IA AVEC GEMINI --
