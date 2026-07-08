@@ -347,7 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- INITIALISATION DE LA GRILLE D'ACCUEIL AVEC TOUS LES JOBS ACTIFS ---
-    let homeJobsLimit = 8;
+    let regularStartIndex = 0;
+    const regularPageSize = 6;
 
     async function initHomeJobsGrid() {
         const homeJobsGrid = document.getElementById('home-jobs-grid');
@@ -363,9 +364,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const isNotPending = !job.id.startsWith('pending_');
             return isNotExpired && isNotPending;
         });
+
+        // Séparer les offres épinglées des offres régulières
+        const pinnedJobs = activeJobs.filter(job => job.isPinned);
+        const regularJobs = activeJobs.filter(job => !job.isPinned);
+
+        // Si le point de départ dépasse les offres disponibles, on boucle à 0
+        if (regularStartIndex >= regularJobs.length) {
+            regularStartIndex = 0;
+        }
+
+        const visibleRegularJobs = regularJobs.slice(regularStartIndex, regularStartIndex + regularPageSize);
         
-        // Récupérer les 8 premières (ou homeJobsLimit)
-        const visibleJobs = activeJobs.slice(0, homeJobsLimit);
+        // Assembler la liste visible : Épinglées (fixes) + Régulières (tournantes)
+        const visibleJobs = [...pinnedJobs, ...visibleRegularJobs];
 
         visibleJobs.forEach(job => {
             const card = document.createElement('div');
@@ -385,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4 class="home-job-title">${job.title}</h4>
                         <div class="home-job-company">${job.company}</div>
                     </div>
-                    <span class="home-job-score">94% match IA</span>
+                    <span class="home-job-score">${job.isPinned ? '📌 À LA UNE' : '94% match IA'}</span>
                 </div>
                 <p class="home-job-desc">${job.description.substring(0, 120)}...</p>
                 <div class="home-job-footer" style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; margin-bottom: 10px;">
@@ -399,17 +411,19 @@ document.addEventListener('DOMContentLoaded', () => {
             homeJobsGrid.appendChild(card);
         });
 
-        // Gérer l'affichage du bouton "Charger plus"
+        // Gérer le bouton de rotation "Voir plus d'offres" style diaporama
         if (loadMoreContainer) {
             loadMoreContainer.innerHTML = '';
-            if (activeJobs.length > homeJobsLimit) {
+            
+            // On affiche le bouton s'il y a plus d'offres régulières que la taille d'une page (6)
+            if (regularJobs.length > regularPageSize) {
                 const btnLoadMore = document.createElement('button');
                 btnLoadMore.className = 'btn-search';
                 btnLoadMore.style.padding = '12px 24px';
                 btnLoadMore.style.fontWeight = '600';
-                btnLoadMore.innerHTML = '<i class="fa-solid fa-spinner"></i> Charger plus d\'offres';
+                btnLoadMore.innerHTML = '<i class="fa-solid fa-rotate"></i> Découvrir d\'autres offres <i class="fa-solid fa-circle-chevron-right"></i>';
                 btnLoadMore.addEventListener('click', () => {
-                    homeJobsLimit += 8;
+                    regularStartIndex += regularPageSize;
                     initHomeJobsGrid();
                 });
                 loadMoreContainer.appendChild(btnLoadMore);
