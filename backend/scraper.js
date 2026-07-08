@@ -133,6 +133,65 @@ function getRequest(url) {
   });
 }
 
+function parseBfemploiHtml(html) {
+  const blocks = html.split('<div class="div_rz_ance_gnral');
+  const jobs = [];
+
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const urlMatch = block.match(/href=['"](annonce-details-[^'"]+\.html)['"]/i);
+    if (!urlMatch) continue;
+    const url = `https://www.bfemploi.com/${urlMatch[1]}`;
+    const id = `job_bfemploi_${urlMatch[1].replace('annonce-details-', '').replace('.html', '')}`;
+
+    const titleMatch = block.match(/class=["']ance_titre["'][^>]*>([^<]+)/i);
+    const title = titleMatch ? titleMatch[1].trim() : "Offre d'emploi";
+
+    const companyMatch = block.match(/title=["']Recruteur:\s*([^"']+)["']/i) || block.match(/<span[^>]*title=["']Recruteur:[^"']*["'][^>]*>([^<]+)/i);
+    const company = companyMatch ? companyMatch[1].trim() : "Structure Locale";
+
+    let location = "Ouagadougou";
+    const locMatch = block.match(/href=["']recherche_offre-lieu-[^"']*["'][^>]*>([^<]+)/i) || block.match(/Lieu d'affectation">([^<]+)/i);
+    if (locMatch) {
+      const locStr = locMatch[1].trim();
+      if (locStr.toLowerCase().includes("bobo")) location = "Bobo-Dioulasso";
+      else if (locStr.toLowerCase().includes("burkina")) location = "Ouagadougou";
+      else location = locStr.charAt(0).toUpperCase() + locStr.slice(1).toLowerCase();
+    }
+
+    const description = `Opportunité professionnelle pour le poste de ${title} chez ${company}. Veuillez consulter le lien officiel pour obtenir le descriptif complet des tâches et postuler.`;
+
+    let deadlineDate = "";
+    const dateMatch = block.match(/clôture<\/i>\s*<b>([^<]+)/i) || block.match(/Date de clôture["'][^>]*>\s*<\/i>\s*<b>([^<]+)/i);
+    if (dateMatch) {
+      const parts = dateMatch[1].trim().split('-');
+      if (parts.length === 3) {
+        deadlineDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+    
+    if (!deadlineDate) {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 20);
+      deadlineDate = futureDate.toISOString().split('T')[0];
+    }
+
+    jobs.push({
+      id,
+      title,
+      company,
+      location,
+      description,
+      source: "bfemploi.com",
+      url,
+      deadlineDate,
+      scrapedAt: new Date().toISOString()
+    });
+  }
+
+  return jobs;
+}
+
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
@@ -343,6 +402,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler emploi.lefaso.net :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : bfemploi.com
+    console.log("\n🌐 Crawling en direct de bfemploi.com...");
+    try {
+      const bfemploiHtml = await getRequest("https://www.bfemploi.com");
+      const bfemploiJobs = parseBfemploiHtml(bfemploiHtml);
+      console.log(`   ↳ ${bfemploiJobs.length} offres extraites de bfemploi.com.`);
+      
+      bfemploiJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          console.log(`[REAL CRAWL BFEMPLOI] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler bfemploi.com :", crawlErr.message);
     }
 
     // Écriture locale de secours
