@@ -641,9 +641,14 @@ async function runScraper() {
     }
 
     // -- STRUCTURATION IA AVEC GEMINI --
-    if (GEMINI_API_KEY && newlyAddedJobs.length > 0) {
-      console.log(`\n🤖 Structuration par l'IA (Gemini) de ${newlyAddedJobs.length} nouvelles offres...`);
-      for (const job of newlyAddedJobs) {
+    const jobsToStructure = dbData.jobs.filter(job => {
+      return job.description && !job.description.includes("🎓") && !job.description.includes("Diplômes requis");
+    });
+
+    if (GEMINI_API_KEY && jobsToStructure.length > 0) {
+      console.log(`\n🤖 Structuration par l'IA (Gemini) de ${jobsToStructure.length} offres non structurées...`);
+      const jobsToProcess = jobsToStructure.slice(0, 15);
+      for (const job of jobsToProcess) {
         console.log(`   🔍 Analyse & structuration pour: "${job.title}" (${job.company})...`);
         const result = await analyzeAndStructureJobWithGemini(job, GEMINI_API_KEY);
         if (result) {
@@ -653,7 +658,7 @@ async function runScraper() {
         }
       }
     } else {
-      console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou aucune nouvelle offre à structurer.");
+      console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou toutes les offres sont déjà structurées.");
     }
 
     // Écriture locale de secours
