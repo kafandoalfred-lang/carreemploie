@@ -305,47 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { data, error } = await supabase.from('jobs').select('*');
                 if (data && data.length > 0) {
-                    // Vérifier si la base contient d'anciennes URLs de simulation (qui renvoient des 404)
-                    const hasBrokenUrls = data.some(j => j.url && (j.url.includes('.html') || j.url.includes('chauffeur_livreur_oua') || j.url.includes('secretaire_bobo') || j.url.includes('permalink.php') || j.url === 'https://emploi.lefaso.net' || j.url === 'https://facebook.com'));
-                    if (hasBrokenUrls) {
-                        console.log("🌱 Détection de liens obsolètes. Lancement de la correction automatique sur Supabase...");
-                        const jobsToUpsert = SIMULATED_LOCAL_JOBS.map(j => ({
-                            id: j.id,
-                            title: j.title,
-                            company: j.company,
-                            location: j.location,
-                            description: j.description,
-                            source: j.source,
-                            url: j.url,
-                            deadline_date: j.deadlineDate
-                        }));
-                        await supabase.from('jobs').upsert(jobsToUpsert);
-                        console.log("🌱 Base de données Supabase mise à jour avec succès !");
-                        
-                        // Recharger les données fraîches
-                        const { data: freshData } = await supabase.from('jobs').select('*');
-                        if (freshData) {
-                            return freshData.map(j => ({
-                                id: j.id,
-                                title: j.title,
-                                company: j.company,
-                                location: j.location,
-                                description: j.description,
-                                source: j.source,
-                                url: j.url,
-                                deadlineDate: j.deadline_date,
-                                isPinned: j.is_pinned || false,
-                                scrapedAt: j.scraped_at || ""
-                            })).sort((a, b) => {
-                                if (a.isPinned && !b.isPinned) return -1;
-                                if (!a.isPinned && b.isPinned) return 1;
-                                const aTime = a.scrapedAt ? new Date(a.scrapedAt).getTime() : 0;
-                                const bTime = b.scrapedAt ? new Date(b.scrapedAt).getTime() : 0;
-                                return bTime - aTime;
-                            });
-                        }
-                    }
-
                     return data.map(j => ({
                         id: j.id,
                         title: j.title,
