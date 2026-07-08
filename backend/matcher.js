@@ -117,6 +117,7 @@ function mockGeminiAnalysis(user, job) {
 const querystring = require('querystring');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER || ""; // ex: 'whatsapp:+14155238886' ou '+1234567890'
@@ -137,7 +138,7 @@ function sendRealEmail(user, job, result, remainingAlerts = null) {
   }
 
   const payload = JSON.stringify({
-    from: "carreemploie <alertes@carreemploie.com>",
+    from: `carréemploie <${RESEND_FROM_EMAIL}>`,
     to: [user.email],
     subject: `[carréemploie] Nouvelle offre d'emploi : ${job.title} - ${job.company}`,
     html: `
