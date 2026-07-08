@@ -688,7 +688,10 @@ document.addEventListener('DOMContentLoaded', () => {
             limitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
         }
         document.getElementById('detail-job-deadline').innerHTML = `<i class="fa-solid fa-calendar-days"></i> Limite : ${limitStr}`;
-        document.getElementById('detail-job-desc').textContent = job.description;
+        const formattedDesc = job.description
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        document.getElementById('detail-job-desc').innerHTML = formattedDesc;
 
         const btnApply = document.getElementById('btn-detail-apply');
         if (btnApply) {

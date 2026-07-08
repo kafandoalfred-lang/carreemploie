@@ -4,6 +4,86 @@ const https = require('https');
 
 const DB_PATH = path.join(__dirname, 'database.json');
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+function postRequest(url, data) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const payload = JSON.stringify(data);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: 443,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(JSON.parse(body));
+        } else {
+          reject(new Error(`HTTP ${res.statusCode} - ${body}`));
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function analyzeAndStructureJobWithGemini(job, apiKey) {
+  const prompt = `Tu es un expert en recrutement au Burkina Faso. Analyse l'offre d'emploi brute ci-dessous et structure ses détails.
+
+OFFRE D'EMPLOI:
+Titre: ${job.title}
+Entreprise: ${job.company}
+Lieu d'origine: ${job.location}
+Description brute: ${job.description}
+Lien d'origine: ${job.url}
+
+Tâche 1 : Rédige une description structurée longue, agréable et professionnelle contenant exactement ces sections :
+🎓 **Diplômes requis** : (Précise les diplômes ou études recherchés)
+🛠️ **Qualifications & Expérience** : (Compétences clés, permis requis, années d'expérience, langues)
+📍 **Lieu d'affectation** : (Ville ou pays)
+📅 **Date limite** : (Date de clôture des dossiers)
+📩 **Conditions pour postuler** : (Instructions claires pour postuler : email, pièces à fournir, WhatsApp, etc.)
+📝 **Missions & Tâches** : (Résumé détaillé des activités du poste)
+
+Tâche 2 : Identifie l'adresse e-mail de candidature directe, le lien de postulation directe ou le numéro WhatsApp mentionné dans le texte de l'offre. S'il s'agit d'un e-mail, crée un lien mailto (ex: mailto:contact@entreprise.com). S'il s'agit d'un numéro WhatsApp, crée un lien wa.me (ex: https://wa.me/226XXXXXXXX). Si aucun contact direct n'est mentionné, garde le lien d'origine (${job.url}).
+
+Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown (pas de \`\`\`json), juste le JSON brut :
+{
+  "structuredDescription": "La description formatée avec les émojis et sections ci-dessus",
+  "directApplicationUrl": "Le lien direct extrait (mailto:, wa.me, ou URL classique)"
+}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const requestData = {
+    contents: [{
+      parts: [{ text: prompt }]
+    }]
+  };
+
+  try {
+    const response = await postRequest(url, requestData);
+    let textResponse = response.candidates[0].content.parts[0].text.trim();
+    textResponse = textResponse.replace(/^```json/i, '').replace(/```$/, '').trim();
+    return JSON.parse(textResponse);
+  } catch (error) {
+    console.warn("⚠️ Échec structuration Gemini pour:", job.title, error.message);
+    return null;
+  }
+}
+
 // Liste d'offres d'emploi actives et de secours par source demandée par l'utilisateur
 const FALLBACK_JOBS = [
   {
@@ -362,6 +442,7 @@ async function runScraper() {
     }
     const dbData = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     const existingJobIds = new Set(dbData.jobs.map(j => j.id));
+    const newlyAddedJobs = [];
     let addedCount = 0;
 
     console.log(`📡 Scan configuré pour ${CRAWL_TARGET_SITES.length} sites et pages Facebook.`);
@@ -370,6 +451,7 @@ async function runScraper() {
     FALLBACK_JOBS.forEach(job => {
       if (!existingJobIds.has(job.id)) {
         dbData.jobs.push(job);
+        newlyAddedJobs.push(job);
         console.log(`[CRAWLED] ${job.title} - ${job.company} (${job.location}) -> Source : ${job.source}`);
         addedCount++;
       }
@@ -380,6 +462,7 @@ async function runScraper() {
       const fbJob = parseFacebookPostLocally(post);
       if (!existingJobIds.has(fbJob.id)) {
         dbData.jobs.push(fbJob);
+        newlyAddedJobs.push(fbJob);
         console.log(`[FACEBOOK INGESTED] ${fbJob.title} - ${fbJob.company} (${fbJob.location})`);
         addedCount++;
       }
@@ -396,6 +479,7 @@ async function runScraper() {
         if (!existingJobIds.has(job.id)) {
           dbData.jobs.push(job);
           existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
           console.log(`[REAL CRAWL LEFASO] ${job.title} - ${job.company} (${job.location})`);
           addedCount++;
         }
@@ -415,12 +499,29 @@ async function runScraper() {
         if (!existingJobIds.has(job.id)) {
           dbData.jobs.push(job);
           existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
           console.log(`[REAL CRAWL BFEMPLOI] ${job.title} - ${job.company} (${job.location})`);
           addedCount++;
         }
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler bfemploi.com :", crawlErr.message);
+    }
+
+    // -- STRUCTURATION IA AVEC GEMINI --
+    if (GEMINI_API_KEY && newlyAddedJobs.length > 0) {
+      console.log(`\n🤖 Structuration par l'IA (Gemini) de ${newlyAddedJobs.length} nouvelles offres...`);
+      for (const job of newlyAddedJobs) {
+        console.log(`   🔍 Analyse & structuration pour: "${job.title}" (${job.company})...`);
+        const result = await analyzeAndStructureJobWithGemini(job, GEMINI_API_KEY);
+        if (result) {
+          job.description = result.structuredDescription;
+          job.url = result.directApplicationUrl;
+          console.log(`     ✅ Offre structurée et lien direct configuré : ${job.url}`);
+        }
+      }
+    } else {
+      console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou aucune nouvelle offre à structurer.");
     }
 
     // Écriture locale de secours
