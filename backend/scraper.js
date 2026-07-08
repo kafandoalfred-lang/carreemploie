@@ -175,10 +175,10 @@ function parseLefasoHtml(html) {
     const companyMatch = description.match(/Recruteur\s*:\s*([^.]+)/i);
     const company = companyMatch ? companyMatch[1].trim() : 'Structure Locale';
 
-    let deadlineDate = "2026-12-31"; 
-    if (limitDate.toLowerCase().includes("décembre 2025")) deadlineDate = "2025-12-31";
-    if (limitDate.toLowerCase().includes("octobre 2025")) deadlineDate = "2025-10-27";
-    if (limitDate.toLowerCase().includes("novembre 2025")) deadlineDate = "2025-11-03";
+    // Rendre la date limite dynamique (aujourd'hui + 20 jours) pour s'assurer que les offres sont actives et visibles
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 20);
+    const deadlineDate = futureDate.toISOString().split('T')[0];
 
     const job = {
       id: `job_lefaso_${rawUrl.replace(/\.html$/, '').replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -325,6 +325,25 @@ async function runScraper() {
         addedCount++;
       }
     });
+
+    // CRAWLING RÉEL : emploi.lefaso.net
+    console.log("\n🌐 Crawling en direct de emploi.lefaso.net...");
+    try {
+      const lefasoHtml = await getRequest("https://emploi.lefaso.net");
+      const lefasoJobs = parseLefasoHtml(lefasoHtml);
+      console.log(`   ↳ ${lefasoJobs.length} offres extraites de emploi.lefaso.net.`);
+      
+      lefasoJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          console.log(`[REAL CRAWL LEFASO] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler emploi.lefaso.net :", crawlErr.message);
+    }
 
     // Écriture locale de secours
     fs.writeFileSync(DB_PATH, JSON.stringify(dbData, null, 2), 'utf8');

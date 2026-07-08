@@ -849,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (titleMatch && locMatch) {
                     let score = 75;
-                    let explanation = `Ce poste de ${job.title} correspond à vos capacités. La ville de ${job.location} est indiquée pour ce poste.`;
+                    let explanation = `Super opportunité ! Ce poste de "${job.title}" correspond bien à vos compétences et critères de recherche à ${job.location}. C'est le moment idéal pour postuler et valoriser votre parcours ! 🌟`;
                     
                     // On prend le premier terme recherché pour adapter le message de l'IA
                     const matchedTerm = searchTerms.find(term => jobTitle.includes(term) || jobDesc.includes(term)) || (searchTerms[0] || "");
@@ -857,42 +857,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (matchedTerm.includes("bureau") || matchedTerm.includes("agent") || matchedTerm.includes("secr") || matchedTerm.includes("assist")) {
                         if (jobTitle.includes("bureau") || jobTitle.includes("secr") || jobTitle.includes("assist")) {
                             score = 95;
-                            explanation = "L'IA valide ce poste : vos critères d'organisation et de secrétariat conviennent parfaitement aux tâches administratives de ce bureau.";
+                            explanation = "L'IA valide ce poste : votre sens de l'organisation et votre maîtrise des tâches de secrétariat s'accordent à merveille avec ce rôle de bureau. N'hésitez pas une seconde, vous avez toutes vos chances ! 💼";
                         }
                     } else if (matchedTerm.includes("recouvrement") || matchedTerm.includes("comptable") || matchedTerm.includes("compte")) {
                         if (jobTitle.includes("recouvrement") || jobTitle.includes("comptable")) {
                             score = 92;
-                            explanation = "Matching très fort. L'IA note que la rigueur demandée pour les déclarations fiscales ou la caisse s'accorde bien avec votre profil.";
+                            explanation = "Matching très fort ! Votre rigueur pour le suivi comptable, les déclarations fiscales ou la caisse correspond précisément aux exigences de cette offre. Foncez, c'est une excellente étape pour votre carrière ! 📊";
                         }
                     } else if (matchedTerm.includes("communication") || matchedTerm.includes("publici")) {
                         if (jobTitle.includes("communication") || jobTitle.includes("publici")) {
                             score = 88;
-                            explanation = "L'IA confirme votre aptitude pour ce rôle de direction de service ou de gestion commerciale dans la communication.";
+                            explanation = "L'IA valide votre profil : vos capacités relationnelles et votre sens commercial conviennent parfaitement aux besoins de communication de cette structure. Saisissez cette superbe occasion ! 📣";
                         }
                     } else if (matchedTerm.includes("chauffeur") || matchedTerm.includes("livreur") || matchedTerm.includes("condui")) {
                         if (jobTitle.includes("chauffeur") || jobTitle.includes("livreur")) {
                             score = 94;
-                            explanation = "L'IA valide ce poste de chauffeur. Votre permis et votre expérience de conduite de véhicules de sécurité ou de fret sont idéaux.";
+                            explanation = "Profil chauffeur validé avec brio ! Votre expérience de la conduite et vos permis de conduire répondent exactement aux besoins logistiques de ce recruteur. Postulez vite, vous avez le profil rêvé ! 🚚";
                         }
                     } else if (matchedTerm.includes("serve") || matchedTerm.includes("maquis") || matchedTerm.includes("restau")) {
                         if (jobTitle.includes("serve") || jobTitle.includes("maquis")) {
                             score = 90;
-                            explanation = "Matching IA validé. Poste de serveuse en maquis correspondant à vos critères d'accueil.";
+                            explanation = "Excellent matching ! Votre sens de l'accueil et votre dynamisme sont les atouts parfaits recherchés pour ce poste de serveuse en maquis. Préparez-vous à briller dans ce rôle ! 🍽️";
                         }
                     } else if (matchedTerm.includes("humanitaire") || matchedTerm.includes("ong") || matchedTerm.includes("projet") || matchedTerm.includes("nutrition")) {
                         if (jobTitle.includes("humanitaire") || jobTitle.includes("nutrition") || jobTitle.includes("chauffeur")) {
                             score = 91;
-                            explanation = "Matching IA : profil adapté aux interventions d'urgence et à la rigueur logistique requise par les ONG.";
+                            explanation = "Profil humanitaire idéal ! Votre réactivité et votre rigueur opérationnelle cadrent parfaitement avec les standards d'intervention de cette ONG. C'est une mission magnifique, lancez-vous ! 🌍";
                         }
                     } else if (matchedTerm.includes("mine") || matchedTerm.includes("techni") || matchedTerm.includes("chantier")) {
                         if (jobTitle.includes("mine") || jobTitle.includes("chantier")) {
                             score = 89;
-                            explanation = "Matching IA : profil technique opérationnel adapté aux contraintes de sécurité et de supervision sur site isolé.";
+                            explanation = "L'IA confirme vos aptitudes ! Vos compétences techniques et de supervision sont idéales pour relever les défis de ce poste sur site isolé. C'est un superbe challenge pour vous ! ⚒️";
                         }
                     } else if (matchedTerm.includes("conseiller") || matchedTerm.includes("clientele") || matchedTerm.includes("microfinance") || matchedTerm.includes("credit")) {
                         if (jobTitle.includes("conseiller") || jobTitle.includes("clientele") || jobTitle.includes("microfinance")) {
                             score = 93;
-                            explanation = "Matching IA : profil de conseiller clientèle idéal pour la microfinance et la gestion de crédits aux micro-entrepreneurs.";
+                            explanation = "Matching commercial fort ! Votre approche client et vos bases financières correspondent parfaitement à ce rôle clé dans la microfinance. Une belle évolution professionnelle vous attend ! 💰";
                         }
                     }
 
@@ -1054,29 +1054,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (keywordMatch) {
                     let score = 80;
-                    let explanation = `Ce poste actif correspond à votre recherche de ${profile.jobtitle}. Vos compétences correspondent.`;
+                    let explanation = `Super opportunité ! Ce poste correspond bien à votre profil de recherche de "${profile.jobtitle}". Votre rigueur est un vrai atout. Tentez votre chance sans tarder ! 💪`;
 
                     if (jobTitleLower.includes("bureau") || jobTitleLower.includes("secr") || jobTitleLower.includes("assist")) {
                         score = 95;
-                        explanation = "L'IA valide ce poste : votre profil convient parfaitement pour ce poste administratif ou de secrétariat.";
+                        explanation = "L'IA valide ce poste : votre rigueur administrative et votre sens du secrétariat conviennent parfaitement aux attentes de ce bureau. C'est le moment idéal pour postuler ! 💼";
                     } else if (jobTitleLower.includes("recouvrement") || jobTitleLower.includes("comptable")) {
                         score = 92;
-                        explanation = "Matching fort. La rigueur demandée pour le suivi comptable ou de caisse s'accorde bien avec votre profil.";
+                        explanation = "Matching très fort ! Vos compétences en comptabilité et gestion s'harmonisent idéalement avec les exigences rigoureuses de ce poste. Vous avez tout pour réussir ici ! 📊";
                     } else if (jobTitleLower.includes("chauffeur") || jobTitleLower.includes("livreur")) {
                         score = 94;
-                        explanation = "L'IA valide ce poste de chauffeur. Vos permis de conduire et votre expérience de route correspondent à l'offre.";
+                        explanation = "Profil chauffeur validé ! Votre expérience routière et la validité de vos permis font de vous le candidat idéal pour cette mission de transport. N'hésitez pas, postulez ! 🚚";
                     } else if (jobTitleLower.includes("serve") || jobTitleLower.includes("maquis")) {
                         score = 90;
-                        explanation = "L'IA confirme votre aptitude pour ce poste de serveuse en maquis.";
+                        explanation = "Excellent matching ! Votre sens du service et votre dynamisme sont les atouts recherchés pour satisfaire la clientèle de ce maquis. Une belle mission en perspective ! 🍽️";
                     } else if (jobTitleLower.includes("nutrition") || jobTitleLower.includes("humanitaire")) {
                         score = 91;
-                        explanation = "L'IA valide votre profil humanitaire pour cette ONG de terrain.";
+                        explanation = "L'IA confirme votre profil ! Vos aptitudes logistiques ou médicales conviennent très bien pour mener à bien cette mission humanitaire. Donnez du sens à votre carrière, postulez ! 🌍";
                     } else if (jobTitleLower.includes("mine") || jobTitleLower.includes("superviseur")) {
                         score = 89;
-                        explanation = "L'IA valide vos aptitudes techniques de supervision de chantier minier.";
+                        explanation = "Matching technique excellent ! Votre expérience terrain de supervision convient parfaitement aux contraintes opérationnelles de ce site minier. Un défi passionnant à relever ! ⚒️";
                     } else if (jobTitleLower.includes("conseiller") || jobTitleLower.includes("microfinance")) {
                         score = 93;
-                        explanation = "L'IA valide votre profil commercial et financier pour cette institution de crédit.";
+                        explanation = "Matching commercial fort ! Votre goût pour le conseil financier s'accorde idéalement avec cette mission d'accompagnement de crédit. Lancez-vous, vous avez toutes vos chances ! 💰";
                     }
 
                     matches.push({ job, score, explanation });
