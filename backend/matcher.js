@@ -143,8 +143,6 @@ function sendRealEmail(user, job, result, remainingAlerts = null) {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
 
-  const directJobLinkOnWebsite = `${WEBSITE_URL}/?job=${job.id}`;
-
   const payload = JSON.stringify({
     from: `carréemploie <${RESEND_FROM_EMAIL}>`,
     to: [user.email],
@@ -166,8 +164,7 @@ function sendRealEmail(user, job, result, remainingAlerts = null) {
         <p style="font-style: italic; color: #555; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #6b7280;">"${result.explanation}"</p>
         
         <div style="margin-top: 25px; text-align: center;">
-          <a href="${directJobLinkOnWebsite}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-right: 10px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Voir l'offre sur le site</a>
-          <a href="${job.url}" style="background-color: #f1f5f9; color: #0f172a; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #cbd5e1;">Lien de postulation direct</a>
+          <a href="${job.url}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Postuler à l'offre (Contact direct / Source)</a>
         </div>
 
         ${alertWarningHtml}
