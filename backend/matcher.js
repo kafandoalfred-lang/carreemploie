@@ -118,6 +118,7 @@ const querystring = require('querystring');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+const WEBSITE_URL = process.env.WEBSITE_URL || "https://kafandoalfred-lang.github.io/carreemploie";
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
 const TWILIO_FROM_NUMBER = process.env.TWILIO_FROM_NUMBER || ""; // ex: 'whatsapp:+14155238886' ou '+1234567890'
@@ -137,6 +138,13 @@ function sendRealEmail(user, job, result, remainingAlerts = null) {
     `;
   }
 
+  // Convertir le markdown simple de la description IA en HTML lisible pour le client mail
+  const formattedDescription = job.description
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  const directJobLinkOnWebsite = `${WEBSITE_URL}/?job=${job.id}`;
+
   const payload = JSON.stringify({
     from: `carréemploie <${RESEND_FROM_EMAIL}>`,
     to: [user.email],
@@ -146,17 +154,22 @@ function sendRealEmail(user, job, result, remainingAlerts = null) {
         <h2 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 8px;">carréemploie - Alerte IA 🌟</h2>
         <p>Bonjour <strong>${user.fullname}</strong>,</p>
         <p>Le robot intelligent a trouvé une opportunité correspondant à votre recherche de <strong>${user.jobtitle}</strong> :</p>
+        
         <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
           <h3 style="margin-top: 0; color: #111827;">${job.title}</h3>
           <p><strong>Entreprise :</strong> ${job.company}</p>
           <p><strong>Lieu :</strong> ${job.location}</p>
-          <p><strong>Description :</strong> ${job.description.substring(0, 200)}...</p>
+          <p><strong>Détails du poste :</strong><br>${formattedDescription}</p>
         </div>
+
         <p><strong>Pourquoi l'IA valide ce match (${result.score}%) ?</strong></p>
         <p style="font-style: italic; color: #555; background: #fafafa; padding: 10px; border-radius: 4px; border-left: 3px solid #6b7280;">"${result.explanation}"</p>
-        <p style="margin-top: 25px;">
-          <a href="${job.url}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Postuler à l'offre</a>
-        </p>
+        
+        <div style="margin-top: 25px; text-align: center;">
+          <a href="${directJobLinkOnWebsite}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin-right: 10px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Voir l'offre sur le site</a>
+          <a href="${job.url}" style="background-color: #f1f5f9; color: #0f172a; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #cbd5e1;">Lien de postulation direct</a>
+        </div>
+
         ${alertWarningHtml}
         <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
         <p style="font-size: 11px; color: #999;">Cet e-mail a été généré automatiquement par carréemploie.</p>

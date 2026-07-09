@@ -1416,7 +1416,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         updateGlobalUI();
-        initHomeJobsGrid();
+        await initHomeJobsGrid();
+
+        // Ouvrir automatiquement le détail d'une offre si demandé dans l'URL (?job=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const jobId = urlParams.get('job');
+        if (jobId) {
+            console.log(`🔗 Détection d'un lien d'offre directe dans l'URL pour l'ID: ${jobId}`);
+            try {
+                const jobs = await getActiveJobsList();
+                const job = jobs.find(j => j.id === jobId);
+                if (job) {
+                    openJobDetailsModalByTitle(job.title);
+                }
+            } catch (err) {
+                console.warn("Impossible d'ouvrir l'offre directe:", err);
+            }
+        }
     }
 
     loadInitialSupabaseData();
