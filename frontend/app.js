@@ -1393,14 +1393,47 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 btnDetailApply.disabled = false;
                 btnDetailApply.innerHTML = originalText;
-                showToast(`Coordonnées de l'offre envoyées avec succès !`, "success");
                 
                 if (profile.notifyWhatsapp && profile.phone) {
+                    showToast(`Coordonnées envoyées sur votre WhatsApp !`, "success");
                     const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(whatsappMessage)}`;
                     window.open(whatsappUrl, '_blank');
                 } else if (profile.notifyEmail && profile.email) {
-                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
-                    window.open(mailtoUrl, '_blank');
+                    // Tenter d'envoyer l'e-mail de manière transparente via la Netlify Function
+                    fetch('/.netlify/functions/send-email', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: profile.email,
+                            fullname: profile.fullname,
+                            jobTitle: jobMatch ? jobMatch.title : jobTitle,
+                            company: jobMatch ? jobMatch.company : "Non spécifiée",
+                            location: jobMatch ? jobMatch.location : "Non spécifiée",
+                            source: jobMatch ? jobMatch.source : "Non spécifiée",
+                            description: jobMatch ? jobMatch.description : "Veuillez consulter l'offre en ligne.",
+                            url: jobMatch ? jobMatch.url : jobUrl
+                        })
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
+                        } else {
+                            // En cas de code d'erreur HTTP (ex: 404 en local), basculer sur le mailto: de secours
+                            console.warn("Netlify function return code error, falling back to mailto.");
+                            showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
+                            const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
+                            window.open(mailtoUrl, '_blank');
+                        }
+                    })
+                    .catch(err => {
+                        // En cas d'erreur de réseau (hors ligne ou local), basculer sur le mailto: de secours
+                        console.warn("Network error calling Netlify function, falling back to mailto:", err);
+                        showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
+                        const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
+                        window.open(mailtoUrl, '_blank');
+                    });
                 }
             }, 1000);
         });
