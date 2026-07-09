@@ -1351,6 +1351,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Récupérer les détails de l'offre pour les envoyer de manière structurée
+            let whatsappMessage = `Bonjour ! Voici le lien pour postuler à l'offre "${jobTitle}" : ${jobUrl}`;
+            let emailBody = `Bonjour,\n\nVoici le lien pour postuler à l'offre de ${jobTitle} :\n\n${jobUrl}\n\nBonne chance !\nL'équipe carréemploie`;
+
+            try {
+                const jobsList = await getActiveJobsList();
+                const jobMatch = jobsList.find(j => j.url === jobUrl);
+                if (jobMatch) {
+                    const cleanDescForWhatsapp = jobMatch.description.replace(/\*\*/g, '*');
+                    
+                    whatsappMessage = `*carréemploie - Détails de l'offre* 🌟\n\n` +
+                        `*Poste :* ${jobMatch.title}\n` +
+                        `*Entreprise :* ${jobMatch.company}\n` +
+                        `*Lieu :* ${jobMatch.location}\n` +
+                        `*Source d'origine :* ${jobMatch.source}\n\n` +
+                        `*Détails & Conditions :*\n${cleanDescForWhatsapp}\n\n` +
+                        `*👉 Lien de candidature direct / Contact :*\n${jobMatch.url}`;
+
+                    emailBody = `Bonjour ${profile ? profile.fullname : ''},\n\n` +
+                        `Voici les détails complets et les coordonnées de l'offre qui vous intéresse :\n\n` +
+                        `-----------------------------------------\n` +
+                        `POSTE : ${jobMatch.title}\n` +
+                        `ENTREPRISE : ${jobMatch.company}\n` +
+                        `LIEU D'AFFECTATION : ${jobMatch.location}\n` +
+                        `SOURCE D'ORIGINE : ${jobMatch.source}\n` +
+                        `-----------------------------------------\n\n` +
+                        `DÉTAILS & CRITÈRES DE L'OFFRE :\n` +
+                        `${jobMatch.description}\n\n` +
+                        `-----------------------------------------\n` +
+                        `👉 CANAL DE POSTULATION DIRECT :\n` +
+                        `${jobMatch.url}\n\n` +
+                        `Bonne chance dans votre recherche !\n` +
+                        `L'équipe carréemploie`;
+                }
+            } catch (err) {
+                console.warn("Erreur de récupération de l'offre pour formater les messages:", err);
+            }
+
             // Simuler l'envoi du lien et rediriger vers WhatsApp/Email
             setTimeout(() => {
                 btnDetailApply.disabled = false;
@@ -1358,11 +1396,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Coordonnées de l'offre envoyées avec succès !`, "success");
                 
                 if (profile.notifyWhatsapp && profile.phone) {
-                    const message = `Bonjour ${profile.fullname} ! Voici le lien de candidature pour l'offre "${jobTitle}" : ${jobUrl}`;
-                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(message)}`;
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(whatsappMessage)}`;
                     window.open(whatsappUrl, '_blank');
                 } else if (profile.notifyEmail && profile.email) {
-                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Lien de candidature - " + jobTitle)}&body=${encodeURIComponent("Bonjour " + profile.fullname + ",\n\nVoici le lien de candidature pour l'offre de " + jobTitle + " :\n\n" + jobUrl + "\n\nBonne chance !\nL'équipe carréemploie")}`;
+                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
                     window.open(mailtoUrl, '_blank');
                 }
             }, 1000);
