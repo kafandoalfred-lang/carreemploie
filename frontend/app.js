@@ -1399,8 +1399,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(whatsappMessage)}`;
                     window.open(whatsappUrl, '_blank');
                 } else if (profile.notifyEmail && profile.email) {
-                    // Tenter d'envoyer l'e-mail de manière transparente via la Netlify Function
-                    fetch('/.netlify/functions/send-email', {
+                    // Tenter d'envoyer l'e-mail de manière transparente via l'API (Vercel ou Netlify)
+                    // On commence par tester le point d'accès Vercel /api/send-email
+                    fetch('/api/send-email', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1420,20 +1421,52 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (response.ok) {
                             showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
                         } else {
-                            // En cas de code d'erreur HTTP (ex: 404 en local), basculer sur le mailto: de secours
-                            console.warn("Netlify function return code error, falling back to mailto.");
-                            showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
-                            const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
-                            window.open(mailtoUrl, '_blank');
+                            // En cas d'erreur Vercel, tenter de basculer sur Netlify
+                            console.warn("Vercel api return code error, trying Netlify fallback...");
+                            tryNetlifyFallback();
                         }
                     })
                     .catch(err => {
-                        // En cas d'erreur de réseau (hors ligne ou local), basculer sur le mailto: de secours
-                        console.warn("Network error calling Netlify function, falling back to mailto:", err);
+                        console.warn("Network error calling Vercel api, trying Netlify fallback:", err);
+                        tryNetlifyFallback();
+                    });
+
+                    function tryNetlifyFallback() {
+                        fetch('/.netlify/functions/send-email', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email: profile.email,
+                                fullname: profile.fullname,
+                                jobTitle: jobMatch ? jobMatch.title : jobTitle,
+                                company: jobMatch ? jobMatch.company : "Non spécifiée",
+                                location: jobMatch ? jobMatch.location : "Non spécifiée",
+                                source: jobMatch ? jobMatch.source : "Non spécifiée",
+                                description: jobMatch ? jobMatch.description : "Veuillez consulter l'offre en ligne.",
+                                url: jobMatch ? jobMatch.url : jobUrl
+                            })
+                        })
+                        .then(response => {
+                            if (response.ok) {
+                                showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
+                            } else {
+                                console.warn("Netlify function return code error, falling back to mailto.");
+                                triggerMailtoFallback();
+                            }
+                        })
+                        .catch(err => {
+                            console.warn("Network error calling Netlify function, falling back to mailto:", err);
+                            triggerMailtoFallback();
+                        });
+                    }
+
+                    function triggerMailtoFallback() {
                         showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
                         const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
                         window.open(mailtoUrl, '_blank');
-                    });
+                    }
                 }
             }, 1000);
         });
