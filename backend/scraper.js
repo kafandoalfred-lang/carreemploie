@@ -364,6 +364,63 @@ function parseFaso7Html(html) {
   return jobs;
 }
 
+async function fetchReliefWebJobs() {
+  const url = "https://api.reliefweb.int/v1/jobs?appname=carreemploie";
+  const payload = {
+    "filter": {
+      "field": "primary_country.name",
+      "value": "Burkina Faso"
+    },
+    "limit": 20,
+    "fields": {
+      "include": ["title", "body", "source", "url", "how_to_apply", "date.closing"]
+    },
+    "sort": ["date.created:desc"]
+  };
+
+  try {
+    const response = await postRequest(url, payload);
+    if (!response || !response.data) return [];
+    
+    return response.data.map(item => {
+      const fields = item.fields;
+      if (!fields) return null;
+      
+      const title = fields.title || "Offre d'emploi Humanitaire";
+      const company = (fields.source && fields.source[0]) ? fields.source[0].name : "ONG Internationale";
+      const location = "Burkina Faso";
+      
+      const bodyText = fields.body || "";
+      const howToApplyText = fields.how_to_apply ? `\n\n📌 **Comment postuler :**\n${fields.how_to_apply}` : "";
+      const description = `${bodyText}${howToApplyText}`;
+      
+      let deadlineDate = "";
+      if (fields.date && fields.date.closing) {
+        deadlineDate = fields.date.closing.split('T')[0];
+      } else {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 20);
+        deadlineDate = futureDate.toISOString().split('T')[0];
+      }
+      
+      return {
+        id: `job_reliefweb_${item.id}`,
+        title,
+        company,
+        location,
+        description,
+        source: "reliefweb.int",
+        url: fields.url || "https://reliefweb.int",
+        deadlineDate,
+        scrapedAt: new Date().toISOString()
+      };
+    }).filter(job => job !== null);
+  } catch (err) {
+    console.warn("⚠️ Impossible de récupérer les offres de ReliefWeb :", err.message);
+    return [];
+  }
+}
+
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
@@ -638,6 +695,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler faso7.com :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : API ReliefWeb (Secteur Humanitaire / ONG au Burkina)
+    console.log("\n🌐 Chargement des offres humanitaires depuis l'API ReliefWeb...");
+    try {
+      const reliefWebJobs = await fetchReliefWebJobs();
+      console.log(`   ↳ ${reliefWebJobs.length} offres extraites de ReliefWeb.`);
+      
+      reliefWebJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL API RELIEFWEB] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible d'interroger l'API ReliefWeb :", crawlErr.message);
     }
 
     // -- STRUCTURATION IA AVEC GEMINI --
