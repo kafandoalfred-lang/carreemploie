@@ -1354,10 +1354,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Récupérer les détails de l'offre pour les envoyer de manière structurée
             let whatsappMessage = `Bonjour ! Voici le lien pour postuler à l'offre "${jobTitle}" : ${jobUrl}`;
             let emailBody = `Bonjour,\n\nVoici le lien pour postuler à l'offre de ${jobTitle} :\n\n${jobUrl}\n\nBonne chance !\nL'équipe carréemploie`;
+            let jobMatch = null;
 
             try {
                 const jobsList = await getActiveJobsList();
-                const jobMatch = jobsList.find(j => j.url === jobUrl);
+                jobMatch = jobsList.find(j => j.url === jobUrl);
                 if (jobMatch) {
                     const cleanDescForWhatsapp = jobMatch.description.replace(/\*\*/g, '*');
                     
