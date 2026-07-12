@@ -583,6 +583,60 @@ function hashCode(str) {
   return hash;
 }
 
+async function fetchLinkedinJobs() {
+  const url = "https://bf.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=Burkina%20Faso&start=0";
+  
+  try {
+    const html = await getRequest(url);
+    const jobs = [];
+    const blocks = html.split('<div class="base-card');
+    
+    for (let i = 1; i < blocks.length; i++) {
+      const block = blocks[i];
+      
+      const urlMatch = block.match(/href="([^"]+)"/i);
+      if (!urlMatch) continue;
+      const cleanUrl = urlMatch[1].split('?')[0];
+      
+      const titleMatch = block.match(/<h3 class="base-search-card__title">([\s\S]*?)<\/h3>/i);
+      if (!titleMatch) continue;
+      const title = titleMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      const companyMatch = block.match(/<a class="hidden-nested-link"[^>]*>([\s\S]*?)<\/a>/i);
+      const company = companyMatch ? companyMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Entreprise sur LinkedIn";
+      
+      const locationMatch = block.match(/<span class="job-search-card__location">([\s\S]*?)<\/span>/i);
+      const location = locationMatch ? locationMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Burkina Faso";
+      
+      const urnMatch = block.match(/data-entity-urn="urn:li:jobPosting:([0-9]+)"/i);
+      const id = `job_linkedin_${urnMatch ? urnMatch[1] : Math.abs(hashCode(cleanUrl))}`;
+      
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30);
+      const deadlineDate = futureDate.toISOString().split('T')[0];
+      
+      const description = `🎓 **Diplômes requis** : Voir sur le site LinkedIn\n🛠️ **Qualifications & Expérience** : Compétences requises selon l'offre de poste\n📍 **Lieu d'affectation** : ${location}\n📅 **Date limite** : Voir conditions de clôture sur LinkedIn\n📩 **Conditions pour postuler** : Postulation en ligne directe sur LinkedIn\n📝 **Missions & Tâches** : Retrouvez l'intégralité des tâches et responsabilités directement sur la fiche de poste officielle de ${company} sur le réseau LinkedIn en cliquant sur le bouton de postulation ci-dessous.`;
+
+      jobs.push({
+        id,
+        title,
+        company,
+        location,
+        description,
+        source: "linkedin.com",
+        url: cleanUrl,
+        deadlineDate,
+        scrapedAt: new Date().toISOString()
+      });
+    }
+    
+    return jobs;
+  } catch (err) {
+    console.warn("⚠️ Impossible de récupérer les offres de LinkedIn :", err.message);
+    return [];
+  }
+}
+
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
@@ -895,6 +949,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler ici-pe.com :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : LinkedIn Jobs (Offres premium au Burkina)
+    console.log("\n🌐 Chargement des offres premium depuis LinkedIn...");
+    try {
+      const linkedinJobs = await fetchLinkedinJobs();
+      console.log(`   ↳ ${linkedinJobs.length} offres extraites de LinkedIn.`);
+      
+      linkedinJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL LINKEDIN] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler LinkedIn :", crawlErr.message);
     }
 
     // -- STRUCTURATION IA AVEC GEMINI --
