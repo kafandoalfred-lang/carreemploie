@@ -1,10 +1,50 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const querystring = require('querystring');
 
 const DB_PATH = path.join(__dirname, 'database.json');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+function postFormRequest(url, data) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const payload = querystring.stringify(data);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: 443,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(payload),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(body));
+          } catch(e) {
+            reject(new Error("JSON parse error: " + body));
+          }
+        } else {
+          reject(new Error(`HTTP ${res.statusCode} - ${body}`));
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.write(payload);
+    req.end();
+  });
+}
 
 function postRequest(url, data) {
   return new Promise((resolve, reject) => {
@@ -421,6 +461,128 @@ async function fetchReliefWebJobs() {
   }
 }
 
+async function fetchIcipeJobs() {
+  const url = "https://www.ici-pe.com/jm-ajax/get_listings/";
+  const payload = {
+    per_page: 25,
+    orderby: "featured",
+    order: "DESC",
+    page: 1
+  };
+
+  try {
+    const response = await postFormRequest(url, payload);
+    if (!response || !response.html) {
+      console.warn("⚠️ Pas de HTML retourné par l'AJAX de ici-pe.com");
+      return [];
+    }
+
+    const html = response.html;
+    const jobs = [];
+    const blocks = html.split('<li class="');
+    
+    for (let i = 1; i < blocks.length; i++) {
+      const block = blocks[i];
+      
+      const urlMatch = block.match(/href="([^"]+)"/i);
+      if (!urlMatch) continue;
+      const jobUrl = urlMatch[1];
+      
+      const titleMatch = block.match(/<h3>([^<]+)<\/h3>/i);
+      if (!titleMatch) continue;
+      const title = titleMatch[1].trim();
+      
+      const companyMatch = block.match(/<div class="company">[\s\S]*?<strong>([\s\S]*?)<\/strong>/i);
+      const company = companyMatch ? companyMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "ICI Partenaire Entreprises";
+      
+      const locationMatch = block.match(/<div class="location">([\s\S]*?)<\/div>/i);
+      const location = locationMatch ? locationMatch[1].trim() : "Ouagadougou";
+      
+      const isExpired = block.includes('class="application-deadline expiring expired"') || block.includes('expired') || block.includes('Fermé:');
+      if (isExpired) {
+        continue;
+      }
+      
+      const deadlineMatch = block.match(/<li class="application-deadline[^>]*>(?:<label>[^<]+<\/label>)?\s*([^<]+)<\/li>/i);
+      let deadlineDate = "";
+      if (deadlineMatch) {
+        const rawDeadline = deadlineMatch[1].trim();
+        deadlineDate = parseFrenchDateToIso(rawDeadline);
+      }
+      
+      if (!deadlineDate) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 14);
+        deadlineDate = futureDate.toISOString().split('T')[0];
+      }
+
+      const postIdMatch = block.match(/post-([0-9]+)/i);
+      const id = `job_icipe_${postIdMatch ? postIdMatch[1] : Math.abs(hashCode(jobUrl))}`;
+      
+      const description = `Offre de recrutement pour le poste de ${title} à ${location}. Recrutement géré par le cabinet ICI Partenaire Entreprises. Veuillez postuler via le lien direct ou consulter les instructions pour constituer votre dossier.`;
+
+      jobs.push({
+        id,
+        title,
+        company,
+        location,
+        description,
+        source: "ici-pe.com/jobs",
+        url: jobUrl,
+        deadlineDate,
+        scrapedAt: new Date().toISOString()
+      });
+    }
+
+    return jobs;
+  } catch (err) {
+    console.warn("⚠️ Impossible de récupérer les offres de ici-pe.com :", err.message);
+    return [];
+  }
+}
+
+function parseFrenchDateToIso(dateStr) {
+  try {
+    const cleanStr = dateStr.toLowerCase().replace(/[^a-z0-9éû]/g, ' ').replace(/\s+/g, ' ').trim();
+    const parts = cleanStr.split(' ');
+    if (parts.length < 3) return "";
+    
+    const day = parts[0].padStart(2, '0');
+    const year = parts[2];
+    
+    const months = {
+      'janvier': '01', 'janv': '01',
+      'février': '02', 'fevr': '02', 'févr': '02',
+      'mars': '03',
+      'avril': '04', 'avr': '04',
+      'mai': '05',
+      'juin': '06',
+      'juillet': '07', 'juill': '07',
+      'août': '08',
+      'septembre': '09', 'sept': '09',
+      'octobre': '10', 'oct': '10',
+      'novembre': '11', 'nov': '11',
+      'décembre': '12', 'dec': '12', 'déc': '12'
+    };
+    
+    const month = months[parts[1]];
+    if (!month) return "";
+    
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return "";
+  }
+}
+
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
@@ -714,6 +876,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible d'interroger l'API ReliefWeb :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : ici-pe.com (ICI Partenaire Entreprises)
+    console.log("\n🌐 Chargement des offres depuis l'AJAX de ici-pe.com...");
+    try {
+      const icipeJobs = await fetchIcipeJobs();
+      console.log(`   ↳ ${icipeJobs.length} offres extraites de ici-pe.com.`);
+      
+      icipeJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL ICIPE] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler ici-pe.com :", crawlErr.message);
     }
 
     // -- STRUCTURATION IA AVEC GEMINI --
