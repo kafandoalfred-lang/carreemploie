@@ -86,7 +86,6 @@ async function analyzeAndStructureJobWithGemini(job, apiKey) {
 OFFRE D'EMPLOI:
 Titre: ${job.title}
 Entreprise: ${job.company}
-Lieu d'origine: ${job.location}
 Description brute: ${job.description}
 Lien d'origine: ${job.url}
 
@@ -95,7 +94,7 @@ Tâche 1 : Rédige une description structurée longue, agréable et professionne
 🛠️ **Qualifications & Expérience** : (Compétences clés, permis requis, années d'expérience, langues)
 📍 **Lieu d'affectation** : (Ville ou pays)
 📅 **Date limite** : (Date de clôture des dossiers)
-📩 **Conditions pour postuler** : (Instructions claires pour postuler : email, pièces à fournir, WhatsApp, etc.)
+📩 **Conditions pour postuler** : (Instructions très claires pour postuler. Si l'offre mentionne une adresse e-mail ou un numéro de contact/WhatsApp pour envoyer le dossier, affiche-le OBLIGATOIREMENT en gras et de façon très visible. Ne mentionne JAMAIS la source web d'où provient l'offre de départ, comme unjobs, reliefweb, lefaso, etc.)
 📝 **Missions & Tâches** : (Résumé détaillé des activités du poste)
 
 Tâche 2 : Identifie l'adresse e-mail de candidature directe, le lien de postulation directe ou le numéro WhatsApp mentionné dans le texte de l'offre. S'il s'agit d'un e-mail, crée un lien mailto (ex: mailto:contact@entreprise.com). S'il s'agit d'un numéro WhatsApp, crée un lien wa.me (ex: https://wa.me/226XXXXXXXX). Si aucun contact direct n'est mentionné, garde le lien d'origine (${job.url}).
@@ -439,7 +438,7 @@ async function fetchReliefWebJobs() {
         deadlineDate = fields.date.closing.split('T')[0];
       } else {
         const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 20);
+        futureDate.setDate(futureDate.getDate() + 14);
         deadlineDate = futureDate.toISOString().split('T')[0];
       }
       
@@ -612,7 +611,7 @@ async function fetchLinkedinJobs() {
       const id = `job_linkedin_${urnMatch ? urnMatch[1] : Math.abs(hashCode(cleanUrl))}`;
       
       const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30);
+      futureDate.setDate(futureDate.getDate() + 14);
       const deadlineDate = futureDate.toISOString().split('T')[0];
       
       const description = `🎓 **Diplômes requis** : Voir sur le site LinkedIn\n🛠️ **Qualifications & Expérience** : Compétences requises selon l'offre de poste\n📍 **Lieu d'affectation** : ${location}\n📅 **Date limite** : Voir conditions de clôture sur LinkedIn\n📩 **Conditions pour postuler** : Postulation en ligne directe sur LinkedIn\n📝 **Missions & Tâches** : Retrouvez l'intégralité des tâches et responsabilités directement sur la fiche de poste officielle de ${company} sur le réseau LinkedIn en cliquant sur le bouton de postulation ci-dessous.`;
