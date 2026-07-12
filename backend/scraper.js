@@ -585,7 +585,7 @@ function hashCode(str) {
   return hash;
 }
 
-async function fetchLinkedinJobs() {
+async function fetchLinkedinJobs(existingJobIds) {
   const url = "https://bf.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=Burkina%20Faso&start=0";
   
   try {
@@ -611,14 +611,43 @@ async function fetchLinkedinJobs() {
       const location = locationMatch ? locationMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Burkina Faso";
       
       const urnMatch = block.match(/data-entity-urn="urn:li:jobPosting:([0-9]+)"/i);
-      const id = `job_linkedin_${urnMatch ? urnMatch[1] : Math.abs(hashCode(cleanUrl))}`;
+      const jobId = urnMatch ? urnMatch[1] : null;
+      const id = `job_linkedin_${jobId || Math.abs(hashCode(cleanUrl))}`;
       
+      // Si l'offre existe déjà, pas besoin de la réanalyser ni de la télécharger
+      if (existingJobIds && existingJobIds.has(id)) {
+        continue;
+      }
+      
+      // Récupérer la description brute réelle via l'API publique de détails LinkedIn
+      let description = "";
+      if (jobId) {
+        try {
+          console.log(`     📥 Téléchargement de la description pour l'offre LinkedIn ${jobId}...`);
+          const detailHtml = await getRequest(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`);
+          const descMatch = detailHtml.match(/<div class="show-more-less-html__markup[^>]*>([\s\S]*?)<\/div>/i);
+          if (descMatch) {
+            description = descMatch[1]
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<\/p>/gi, '\n')
+              .replace(/<li>/gi, '\n- ')
+              .replace(/<[^>]+>/g, '')
+              .replace(/\n\s*\n+/g, '\n\n')
+              .trim();
+          }
+        } catch (detailErr) {
+          console.warn(`     ⚠️ Échec de la récupération de la description pour ${jobId} :`, detailErr.message);
+        }
+      }
+      
+      if (!description) {
+        description = `Offre de recrutement pour le poste de ${title} chez ${company} à ${location}. Veuillez consulter les détails complets sur la fiche d'origine.`;
+      }
+
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 14);
       const deadlineDate = futureDate.toISOString().split('T')[0];
       
-      const description = `🎓 **Diplômes requis** : Voir sur le site LinkedIn\n🛠️ **Qualifications & Expérience** : Compétences requises selon l'offre de poste\n📍 **Lieu d'affectation** : ${location}\n📅 **Date limite** : Voir conditions de clôture sur LinkedIn\n📩 **Conditions pour postuler** : Postulation en ligne directe sur LinkedIn\n📝 **Missions & Tâches** : Retrouvez l'intégralité des tâches et responsabilités directement sur la fiche de poste officielle de ${company} sur le réseau LinkedIn en cliquant sur le bouton de postulation ci-dessous.`;
-
       jobs.push({
         id,
         title,
@@ -956,7 +985,7 @@ async function runScraper() {
     // CRAWLING RÉEL : LinkedIn Jobs (Offres premium au Burkina)
     console.log("\n🌐 Chargement des offres premium depuis LinkedIn...");
     try {
-      const linkedinJobs = await fetchLinkedinJobs();
+      const linkedinJobs = await fetchLinkedinJobs(existingJobIds);
       console.log(`   ↳ ${linkedinJobs.length} offres extraites de LinkedIn.`);
       
       linkedinJobs.forEach(job => {
