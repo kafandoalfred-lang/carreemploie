@@ -101,9 +101,12 @@ Tâche 2 : Identifie l'adresse e-mail de candidature directe, le lien de postula
 
 Tâche 3 : Identifie la date limite de candidature (clôture des dossiers) mentionnée dans la description brute. Convertis-la au format standard YYYY-MM-DD (ex: 2026-07-20). Si elle est absente ou introuvable, renvoie null.
 
+Tâche 4 : Si le titre ou la description brute de l'offre d'emploi sont rédigés en anglais (ou dans une autre langue que le français), traduis l'intégralité de tes réponses (structuredDescription, ainsi que le titre du poste) en français de manière professionnelle et naturelle pour les candidats francophones du Burkina Faso.
+
 Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown (pas de \`\`\`json), juste le JSON brut :
 {
-  "structuredDescription": "La description formatée avec les émojis et sections ci-dessus",
+  "title": "Le titre traduit en français (ex: 'Recruteur Interne' au lieu de 'Internal Recruiter') ou conservé tel quel s'il est déjà en français",
+  "structuredDescription": "La description formatée en français avec les émojis et sections ci-dessus",
   "directApplicationUrl": "Le lien direct extrait (mailto:, wa.me, ou URL classique)",
   "deadlineDate": "YYYY-MM-DD ou null"
 }`;
@@ -586,7 +589,7 @@ function hashCode(str) {
 }
 
 async function fetchLinkedinJobs(existingJobIds) {
-  const url = "https://bf.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=Burkina%20Faso&start=0";
+  const url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=Burkina%20Faso&geoId=100587095&start=0";
   
   try {
     const html = await getRequest(url);
@@ -826,6 +829,38 @@ function uploadJobToSupabase(job) {
   });
 }
 
+function deleteJobFromSupabase(jobId) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return Promise.resolve();
+  }
+
+  const parsedUrl = new URL(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`);
+  
+  const options = {
+    hostname: parsedUrl.hostname,
+    port: 443,
+    path: parsedUrl.pathname + parsedUrl.search,
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`
+    }
+  };
+
+  return new Promise((resolve) => {
+    const req = https.request(options, (res) => {
+      res.on('data', () => {});
+      res.on('end', () => resolve());
+    });
+    
+    req.on('error', () => {
+      resolve();
+    });
+    
+    req.end();
+  });
+}
+
 async function runScraper() {
   console.log("==================================================");
   console.log("🕵️‍♂️ Collecte multi-sources en cours pour carréemploie...");
@@ -983,8 +1018,34 @@ async function runScraper() {
     }
 
     // CRAWLING RÉEL : LinkedIn Jobs (Offres premium au Burkina)
-    console.log("\n🌐 Chargement des offres premium depuis LinkedIn...");
+    console.log("\n🌐 Nettoyage et chargement des offres premium depuis LinkedIn...");
     try {
+      const initialJobsLength = dbData.jobs.length;
+      const oldLinkedinJobs = dbData.jobs.filter(job => {
+        return job.source === 'linkedin.com' && (
+          job.description.includes("Voir sur le site LinkedIn") || 
+          job.title.includes("SCARY") || 
+          job.company.includes("Haunted") ||
+          job.location.includes("You, North") ||
+          job.location.includes("Waterfalls") ||
+          job.description.includes("Qualifications & Expérience : Compétences requises")
+        );
+      });
+      
+      if (oldLinkedinJobs.length > 0) {
+        console.log(`   🧹 Suppression de ${oldLinkedinJobs.length} anciennes offres LinkedIn invalides sur Supabase...`);
+        for (const oldJob of oldLinkedinJobs) {
+          await deleteJobFromSupabase(oldJob.id);
+          existingJobIds.delete(oldJob.id);
+        }
+      }
+      
+      dbData.jobs = dbData.jobs.filter(job => !oldLinkedinJobs.some(oj => oj.id === job.id));
+      const cleanedCount = initialJobsLength - dbData.jobs.length;
+      if (cleanedCount > 0) {
+        console.log(`   🧹 ${cleanedCount} anciennes offres LinkedIn invalides (spam international/placeholder) supprimées avec succès.`);
+      }
+
       const linkedinJobs = await fetchLinkedinJobs(existingJobIds);
       console.log(`   ↳ ${linkedinJobs.length} offres extraites de LinkedIn.`);
       
@@ -1015,6 +1076,9 @@ async function runScraper() {
         if (result) {
           job.description = result.structuredDescription;
           job.url = result.directApplicationUrl;
+          if (result.title && result.title.trim() !== "" && !result.title.includes("Le titre traduit")) {
+            job.title = result.title.trim();
+          }
           if (result.deadlineDate && /^\d{4}-\d{2}-\d{2}$/.test(result.deadlineDate)) {
             job.deadlineDate = result.deadlineDate;
             console.log(`     📅 Date limite mise à jour par l'IA : ${job.deadlineDate}`);
