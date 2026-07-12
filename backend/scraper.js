@@ -99,10 +99,13 @@ Tâche 1 : Rédige une description structurée longue, agréable et professionne
 
 Tâche 2 : Identifie l'adresse e-mail de candidature directe, le lien de postulation directe ou le numéro WhatsApp mentionné dans le texte de l'offre. S'il s'agit d'un e-mail, crée un lien mailto (ex: mailto:contact@entreprise.com). S'il s'agit d'un numéro WhatsApp, crée un lien wa.me (ex: https://wa.me/226XXXXXXXX). Si aucun contact direct n'est mentionné, garde le lien d'origine (${job.url}).
 
+Tâche 3 : Identifie la date limite de candidature (clôture des dossiers) mentionnée dans la description brute. Convertis-la au format standard YYYY-MM-DD (ex: 2026-07-20). Si elle est absente ou introuvable, renvoie null.
+
 Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown (pas de \`\`\`json), juste le JSON brut :
 {
   "structuredDescription": "La description formatée avec les émojis et sections ci-dessus",
-  "directApplicationUrl": "Le lien direct extrait (mailto:, wa.me, ou URL classique)"
+  "directApplicationUrl": "Le lien direct extrait (mailto:, wa.me, ou URL classique)",
+  "deadlineDate": "YYYY-MM-DD ou null"
 }`;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -983,6 +986,10 @@ async function runScraper() {
         if (result) {
           job.description = result.structuredDescription;
           job.url = result.directApplicationUrl;
+          if (result.deadlineDate && /^\d{4}-\d{2}-\d{2}$/.test(result.deadlineDate)) {
+            job.deadlineDate = result.deadlineDate;
+            console.log(`     📅 Date limite mise à jour par l'IA : ${job.deadlineDate}`);
+          }
           console.log(`     ✅ Offre structurée et lien direct configuré : ${job.url}`);
         }
       }

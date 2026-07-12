@@ -723,7 +723,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-job-title').textContent = job.title;
         document.getElementById('detail-job-company').textContent = job.company;
         document.getElementById('detail-job-location').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${job.location}`;
-        document.getElementById('detail-job-source').style.display = 'none';
+        document.getElementById('detail-job-source').style.display = 'inline-block';
+        document.getElementById('detail-job-source').innerHTML = `<i class="fa-solid fa-globe"></i> Source : ${job.source}`;
         
         let limitStr = "Non spécifiée";
         if (job.deadlineDate) {

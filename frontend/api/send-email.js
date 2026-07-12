@@ -44,12 +44,13 @@ module.exports = async (req, res) => {
             <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">${jobTitle}</h3>
             <p style="margin: 6px 0;"><strong>Entreprise :</strong> ${company}</p>
             <p style="margin: 6px 0;"><strong>Lieu :</strong> ${location}</p>
+            <p style="margin: 6px 0;"><strong>Source d'origine :</strong> ${source || 'Non spécifiée'}</p>
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
             <p style="margin: 6px 0; line-height: 1.5;"><strong>Détails & Critères :</strong><br><br>${formattedDescription}</p>
           </div>
 
           <div style="margin-top: 25px; text-align: center;">
-            <a href="${url}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Postuler à l'offre d'emploi</a>
+            <a href="${url}" style="background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">Postuler à l'offre (Contact direct / Source)</a>
           </div>
 
           <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
