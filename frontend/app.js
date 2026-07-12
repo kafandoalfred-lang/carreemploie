@@ -1395,13 +1395,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnDetailApply.disabled = false;
                 btnDetailApply.innerHTML = originalText;
                 
-                if (profile.notifyWhatsapp && profile.phone) {
-                    showToast(`Coordonnées envoyées sur votre WhatsApp !`, "success");
-                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(whatsappMessage)}`;
-                    window.open(whatsappUrl, '_blank');
-                } else if (profile.notifyEmail && profile.email) {
-                    // Tenter d'envoyer l'e-mail de manière transparente via l'API (Vercel ou Netlify)
-                    // On commence par tester le point d'accès Vercel /api/send-email
+                let sentAny = false;
+
+                function sendApiEmail() {
                     fetch('/api/send-email', {
                         method: 'POST',
                         headers: {
@@ -1422,7 +1418,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (response.ok) {
                             showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
                         } else {
-                            // En cas d'erreur Vercel, tenter de basculer sur Netlify
                             console.warn("Vercel api return code error, trying Netlify fallback...");
                             tryNetlifyFallback();
                         }
@@ -1431,43 +1426,69 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.warn("Network error calling Vercel api, trying Netlify fallback:", err);
                         tryNetlifyFallback();
                     });
+                }
 
-                    function tryNetlifyFallback() {
-                        fetch('/.netlify/functions/send-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                email: profile.email,
-                                fullname: profile.fullname,
-                                jobTitle: jobMatch ? jobMatch.title : jobTitle,
-                                company: jobMatch ? jobMatch.company : "Non spécifiée",
-                                location: jobMatch ? jobMatch.location : "Non spécifiée",
-                                source: jobMatch ? jobMatch.source : "Non spécifiée",
-                                description: jobMatch ? jobMatch.description : "Veuillez consulter l'offre en ligne.",
-                                url: jobMatch ? jobMatch.url : jobUrl
-                            })
+                function tryNetlifyFallback() {
+                    fetch('/.netlify/functions/send-email', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: profile.email,
+                            fullname: profile.fullname,
+                            jobTitle: jobMatch ? jobMatch.title : jobTitle,
+                            company: jobMatch ? jobMatch.company : "Non spécifiée",
+                            location: jobMatch ? jobMatch.location : "Non spécifiée",
+                            source: jobMatch ? jobMatch.source : "Non spécifiée",
+                            description: jobMatch ? jobMatch.description : "Veuillez consulter l'offre en ligne.",
+                            url: jobMatch ? jobMatch.url : jobUrl
                         })
-                        .then(response => {
-                            if (response.ok) {
-                                showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
-                            } else {
-                                console.warn("Netlify function return code error, falling back to mailto.");
-                                triggerMailtoFallback();
-                            }
-                        })
-                        .catch(err => {
-                            console.warn("Network error calling Netlify function, falling back to mailto:", err);
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            showToast("Détails de l'offre envoyés sur votre boîte e-mail !", "success");
+                        } else {
+                            console.warn("Netlify function return code error, falling back to mailto.");
                             triggerMailtoFallback();
-                        });
-                    }
+                        }
+                    })
+                    .catch(err => {
+                        console.warn("Network error calling Netlify function, falling back to mailto:", err);
+                        triggerMailtoFallback();
+                    });
+                }
 
-                    function triggerMailtoFallback() {
-                        showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
-                        const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
-                        window.open(mailtoUrl, '_blank');
-                    }
+                function triggerMailtoFallback() {
+                    showToast(`Coordonnées prêtes dans votre messagerie !`, "success");
+                    const mailtoUrl = `mailto:${encodeURIComponent(profile.email)}?subject=${encodeURIComponent("Détails de l'offre - " + jobTitle)}&body=${encodeURIComponent(emailBody)}`;
+                    window.open(mailtoUrl, '_blank');
+                }
+
+                function sendWhatsApp() {
+                    showToast(`Coordonnées envoyées sur votre WhatsApp !`, "success");
+                    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(profile.phone)}&text=${encodeURIComponent(whatsappMessage)}`;
+                    window.open(whatsappUrl, '_blank');
+                }
+
+                // 1. Déclencher l'e-mail automatique si activé
+                if (profile.notifyEmail && profile.email) {
+                    sentAny = true;
+                    sendApiEmail();
+                }
+
+                // 2. Déclencher l'envoi WhatsApp si activé
+                if (profile.notifyWhatsapp && profile.phone) {
+                    sentAny = true;
+                    // Léger délai pour ne pas bloquer les ouvertures d'onglets simultanées sur certains navigateurs
+                    setTimeout(() => {
+                        sendWhatsApp();
+                    }, 300);
+                }
+
+                // 3. Fallback mailto si aucun canal n'est configuré
+                if (!sentAny) {
+                    triggerMailtoFallback();
                 }
             }, 1000);
         });
