@@ -904,12 +904,12 @@ async function runScraper() {
     // -- MIGRATION AUTOMATIQUE : Re-scrapper les descriptions brutes des offres existantes incomplètes --
     console.log("\n🔄 Analyse de la base existante pour mise à jour des anciennes offres...");
     for (const job of dbData.jobs) {
-      const isPlaceholderLinkedin = job.source === 'linkedin.com' && (
+      const isPlaceholderLinkedin = job.source === 'linkedin.com' && job.description && (
         job.description.includes("Voir sur le site LinkedIn") || 
         job.description.includes("Qualifications & Expérience : Compétences requises")
       );
       
-      const isPlaceholderIcipe = job.source === 'ici-pe.com/jobs' && (
+      const isPlaceholderIcipe = job.source === 'ici-pe.com/jobs' && job.description && (
         job.description.includes("Recrutement géré par le cabinet ICI Partenaire Entreprises") ||
         job.description.includes("Veuillez postuler via le lien direct ou consulter les instructions")
       );
