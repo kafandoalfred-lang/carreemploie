@@ -900,6 +900,69 @@ async function runScraper() {
     }
     const dbData = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     const existingJobIds = new Set(dbData.jobs.map(j => j.id));
+    
+    // -- MIGRATION AUTOMATIQUE : Re-scrapper les descriptions brutes des offres existantes incomplètes --
+    console.log("\n🔄 Analyse de la base existante pour mise à jour des anciennes offres...");
+    for (const job of dbData.jobs) {
+      const isPlaceholderLinkedin = job.source === 'linkedin.com' && (
+        job.description.includes("Voir sur le site LinkedIn") || 
+        job.description.includes("Qualifications & Expérience : Compétences requises")
+      );
+      
+      const isPlaceholderIcipe = job.source === 'ici-pe.com/jobs' && (
+        job.description.includes("Recrutement géré par le cabinet ICI Partenaire Entreprises") ||
+        job.description.includes("Veuillez postuler via le lien direct ou consulter les instructions")
+      );
+
+      if (isPlaceholderLinkedin || isPlaceholderIcipe) {
+        console.log(`   🛠️ Re-scraping des détails pour l'offre incomplète : "${job.title}" (${job.company})...`);
+        let rawDescription = "";
+
+        if (job.source === 'linkedin.com') {
+          const jobId = job.id.replace("job_linkedin_", "");
+          if (jobId && /^[0-9]+$/.test(jobId)) {
+            try {
+              const detailHtml = await getRequest(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`);
+              const descMatch = detailHtml.match(/<div class="show-more-less-html__markup[^>]*>([\s\S]*?)<\/div>/i);
+              if (descMatch) {
+                rawDescription = descMatch[1]
+                  .replace(/<br\s*\/?>/gi, '\n')
+                  .replace(/<\/p>/gi, '\n')
+                  .replace(/<li>/gi, '\n- ')
+                  .replace(/<[^>]+>/g, '')
+                  .replace(/\n\s*\n+/g, '\n\n')
+                  .trim();
+              }
+            } catch (err) {
+              console.warn(`     ⚠️ Échec du re-scraping LinkedIn pour ${jobId} :`, err.message);
+            }
+          }
+        } else if (job.source === 'ici-pe.com/jobs') {
+          try {
+            const detailHtml = await getRequest(job.url);
+            const descMatch = detailHtml.match(/<div class="job_description[^>]*>([\s\S]*?)<\/div>/i) || detailHtml.match(/<div class="post-content[^>]*>([\s\S]*?)<\/div>/i);
+            if (descMatch) {
+              rawDescription = descMatch[1]
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n')
+                .replace(/<li>/gi, '\n- ')
+                .replace(/<[^>]+>/g, '')
+                .replace(/\n\s*\n+/g, '\n\n')
+                .trim();
+            }
+          } catch (err) {
+            console.warn(`     ⚠️ Échec du re-scraping ici-pe.com pour ${job.url} :`, err.message);
+          }
+        }
+
+        if (rawDescription) {
+          job.description = rawDescription;
+          job.deadlineDate = "";
+          console.log(`     ✅ Description brute récupérée avec succès. Elle sera restructurée par l'IA.`);
+        }
+      }
+    }
+
     const newlyAddedJobs = [];
     let addedCount = 0;
 
