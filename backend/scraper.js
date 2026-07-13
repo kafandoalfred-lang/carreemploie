@@ -640,6 +640,13 @@ async function fetchLinkedinJobs(existingJobIds) {
       const locationMatch = block.match(/<span class="job-search-card__location">([\s\S]*?)<\/span>/i);
       const location = locationMatch ? locationMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Burkina Faso";
       
+      // Filtrer les fausses offres de backfill géographique de LinkedIn (Spam US/Japon)
+      const cleanLoc = location.toLowerCase();
+      const isValidBurkinaLocation = cleanLoc.includes("ouagadougou") || cleanLoc.includes("bobo") || cleanLoc.includes("koudougou") || cleanLoc === "burkina faso";
+      if (!isValidBurkinaLocation) {
+        continue; // Ignorer ce job spam international
+      }
+      
       const urnMatch = block.match(/data-entity-urn="urn:li:jobPosting:([0-9]+)"/i);
       const jobId = urnMatch ? urnMatch[1] : null;
       const id = `job_linkedin_${jobId || Math.abs(hashCode(cleanUrl))}`;
