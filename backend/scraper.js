@@ -1166,7 +1166,7 @@ async function runScraper() {
 
     if (GEMINI_API_KEY && jobsToStructure.length > 0) {
       console.log(`\n🤖 Structuration par l'IA (Gemini) de ${jobsToStructure.length} offres non structurées...`);
-      const jobsToProcess = jobsToStructure.slice(0, 80);
+      const jobsToProcess = jobsToStructure.slice(0, 150);
       for (let i = 0; i < jobsToProcess.length; i++) {
         const job = jobsToProcess[i];
         console.log(`   🔍 [${i + 1}/${jobsToProcess.length}] Analyse & structuration pour: "${job.title}" (${job.company})...`);
