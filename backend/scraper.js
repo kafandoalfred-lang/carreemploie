@@ -344,7 +344,7 @@ function parseBfemploiHtml(html) {
   return jobs;
 }
 
-function parseUnjobsHtml(html) {
+async function parseUnjobsHtml(html) {
   const jobs = [];
   const matches = html.matchAll(/href=["']([^"']*(?:unjobs\.org)?\/vacancies\/[0-9]+)["'][^>]*>([^<]+)/gi);
   
@@ -366,11 +366,44 @@ function parseUnjobsHtml(html) {
     const id = `job_unjobs_${vacancyIdMatch ? vacancyIdMatch[1] : Date.now()}`;
     
     const company = "Organisation Internationale / ONU";
-    const description = `Poste international pour le rôle de ${title} basé à ${location}. Veuillez consulter l'offre complète sur le portail UNjobs pour voir les critères et postuler.`;
     
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 20);
-    const deadlineDate = futureDate.toISOString().split('T')[0];
+    let description = "";
+    let deadlineDate = "";
+    try {
+      console.log(`     📥 Téléchargement des détails pour unjobs.org: ${title}...`);
+      const detailHtml = await getRequest(url);
+      
+      // Extraction de la description brute
+      const descMatch = detailHtml.match(/<div class="job_description[^>]*>([\s\S]*?)<\/div>/i) || 
+                        detailHtml.match(/<div class="vacancy[^>]*>([\s\S]*?)<\/div>/i) || 
+                        detailHtml.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+                        detailHtml.match(/<div class="content[^>]*>([\s\S]*?)<\/div>/i);
+      if (descMatch) {
+        description = descMatch[1]
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+      
+      // Extraction de la date (bilingue) depuis la page de détails
+      const extDate = extractFrenchDateFromText(detailHtml);
+      if (extDate) {
+        deadlineDate = extDate;
+      }
+    } catch (err) {
+      console.warn(`     ⚠️ Échec du téléchargement pour unjobs.org:`, err.message);
+    }
+
+    if (!description) {
+      description = `Poste international pour le rôle de ${title} basé à ${location}. Veuillez consulter l'offre complète sur le portail UNjobs pour voir les critères et postuler.`;
+    }
+
+    // Attendre 1,5s pour respecter le serveur
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    console.log(`   ↳ [COLLECTE UNJOBS] "${title}" (Date Limite : ${deadlineDate || "Non spécifiée"})`);
 
     jobs.push({
       id,
@@ -388,7 +421,7 @@ function parseUnjobsHtml(html) {
   return jobs;
 }
 
-function parseFaso7Html(html) {
+async function parseFaso7Html(html) {
   const blocks = html.split('<li class="post-item');
   const jobs = [];
 
@@ -405,15 +438,43 @@ function parseFaso7Html(html) {
 
     const id = `job_faso7_${url.replace('https://faso7.com/', '').replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-    const descMatch = block.match(/class=["']post-excerpt["'][^>]*>([^<]+)/i) || block.match(/<p>([^<]+)<\/p>/i);
-    const description = descMatch ? descMatch[1].trim() : `Avis de recrutement publié sur Faso7 : ${title}. Veuillez consulter les détails complets pour postuler.`;
+    const descMatch2 = block.match(/class=["']post-excerpt["'][^>]*>([^<]+)/i) || block.match(/<p>([^<]+)<\/p>/i);
+    
+    let description = "";
+    try {
+      console.log(`     📥 Téléchargement des détails pour l'offre faso7.com: ${title}...`);
+      const detailHtml = await getRequest(url);
+      const descMatch = detailHtml.match(/<div class="entry-content[^>]*>([\s\S]*?)<\/div>/i) || detailHtml.match(/<div class="post-content[^>]*>([\s\S]*?)<\/div>/i);
+      if (descMatch) {
+        description = descMatch[1]
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>/gi, '\n')
+          .replace(/<li>/gi, '\n- ')
+          .replace(/<[^>]+>/g, '')
+          .replace(/\n\s*\n+/g, '\n\n')
+          .trim();
+      }
+    } catch (detailErr) {
+      console.warn(`     ⚠️ Échec du téléchargement pour faso7:`, detailErr.message);
+    }
+    
+    if (!description) {
+      description = descMatch2 ? descMatch2[1].trim() : `Avis de recrutement publié sur Faso7 : ${title}. Veuillez consulter les détails complets pour postuler.`;
+    }
+
+    // Attendre 1,5s pour respecter le serveur
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const location = "Ouagadougou";
     const company = "Structure Partenaire (via Faso7)";
 
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 20);
-    const deadlineDate = futureDate.toISOString().split('T')[0];
+    let deadlineDate = "";
+    const extDate = extractFrenchDateFromText(description);
+    if (extDate) {
+      deadlineDate = extDate;
+    }
+
+    console.log(`   ↳ [COLLECTE FASO7] "${title}" (Date Limite : ${deadlineDate || "Non spécifiée"})`);
 
     jobs.push({
       id,
@@ -648,7 +709,10 @@ function extractFrenchDateFromText(text) {
     'septembre': '09', 'sept': '09', 'sep': '09',
     'octobre': '10', 'oct': '10',
     'novembre': '11', 'nov': '11',
-    'décembre': '12', 'déc': '12', 'dec': '12'
+    'décembre': '12', 'déc': '12', 'dec': '12',
+    'january': '01', 'february': '02', 'march': '03', 'april': '04', 
+    'june': '06', 'july': '07', 'august': '08', 'september': '09', 
+    'october': '10', 'november': '11', 'december': '12'
   };
 
   const cleanText = text
@@ -656,7 +720,7 @@ function extractFrenchDateFromText(text) {
     .replace(/&#8211;/g, '-')
     .replace(/\s+/g, ' ');
 
-  const regex1 = /le\s+(?:(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?([0-9]{1,2})\s+([a-zéû]+)\s+([0-9]{4})/i;
+  const regex1 = /(?:le|on|by)?\s*\b([0-9]{1,2})\s+([a-zéû]+)\s+([0-9]{4})\b/i;
   const match1 = cleanText.match(regex1);
   if (match1) {
     const day = match1[1].padStart(2, '0');
@@ -827,10 +891,13 @@ function parseLefasoHtml(html) {
     const companyMatch = description.match(/Recruteur\s*:\s*([^.]+)/i);
     const company = companyMatch ? companyMatch[1].trim() : 'Structure Locale';
 
-    // Rendre la date limite dynamique (aujourd'hui + 20 jours) pour s'assurer que les offres sont actives et visibles
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 20);
-    const deadlineDate = futureDate.toISOString().split('T')[0];
+    let deadlineDate = "";
+    const extDate = extractFrenchDateFromText(limitDate);
+    if (extDate) {
+      deadlineDate = extDate;
+    }
+
+    console.log(`   ↳ [COLLECTE LEFASO] "${title}" (Date Limite : ${deadlineDate || "Non spécifiée"})`);
 
     const job = {
       id: `job_lefaso_${rawUrl.replace(/\.html$/, '').replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -1120,7 +1187,7 @@ async function runScraper() {
     console.log("\n🌐 Crawling en direct de unjobs.org...");
     try {
       const unjobsHtml = await getRequest("https://unjobs.org/duty_stations/oua");
-      const unjobsJobs = parseUnjobsHtml(unjobsHtml);
+      const unjobsJobs = await parseUnjobsHtml(unjobsHtml);
       console.log(`   ↳ ${unjobsJobs.length} offres extraites de unjobs.org.`);
       
       unjobsJobs.forEach(job => {
@@ -1140,7 +1207,7 @@ async function runScraper() {
     console.log("\n🌐 Crawling en direct de faso7.com...");
     try {
       const faso7Html = await getRequest("https://faso7.com/tag/recrutement/");
-      const faso7Jobs = parseFaso7Html(faso7Html);
+      const faso7Jobs = await parseFaso7Html(faso7Html);
       console.log(`   ↳ ${faso7Jobs.length} offres extraites de faso7.com.`);
       
       faso7Jobs.forEach(job => {
