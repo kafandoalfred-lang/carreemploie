@@ -288,7 +288,7 @@ function parseBfemploiHtml(html) {
   const blocks = html.split('<div class="div_rz_ance_gnral');
   const jobs = [];
 
-  const maxBlocks = Math.min(blocks.length, 9);
+  const maxBlocks = Math.min(blocks.length, 16);
   for (let i = 1; i < maxBlocks; i++) {
     const block = blocks[i];
     const urlMatch = block.match(/href=['"](annonce-details-[^'"]+\.html)['"]/i);
@@ -350,7 +350,7 @@ function parseUnjobsHtml(html) {
   
   let count = 0;
   for (const m of matches) {
-    if (count >= 8) break;
+    if (count >= 15) break;
     const rawPathOrUrl = m[1];
     const text = m[2].trim();
     
@@ -392,7 +392,7 @@ function parseFaso7Html(html) {
   const blocks = html.split('<li class="post-item');
   const jobs = [];
 
-  const maxBlocks = Math.min(blocks.length, 9);
+  const maxBlocks = Math.min(blocks.length, 16);
   for (let i = 1; i < maxBlocks; i++) {
     const block = blocks[i];
     
@@ -438,7 +438,7 @@ async function fetchReliefWebJobs() {
       "field": "primary_country.name",
       "value": "Burkina Faso"
     },
-    "limit": 8,
+    "limit": 15,
     "fields": {
       "include": ["title", "body", "source", "url", "how_to_apply", "date.closing"]
     },
@@ -491,7 +491,7 @@ async function fetchReliefWebJobs() {
 async function fetchIcipeJobs(existingJobIds) {
   const url = "https://www.ici-pe.com/jm-ajax/get_listings/";
   const payload = {
-    per_page: 8,
+    per_page: 15,
     orderby: "featured",
     order: "DESC",
     page: 1
@@ -556,6 +556,9 @@ async function fetchIcipeJobs(existingJobIds) {
       } catch (detailErr) {
         console.warn(`     ⚠️ Échec du téléchargement de la description pour ici-pe.com:`, detailErr.message);
       }
+      
+      // Respecter le serveur pour éviter les blocages temporaires IP (WAF)
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       if (!description) {
         description = `Offre de recrutement pour le poste de ${title} à ${location}. Recrutement géré par le cabinet ICI Partenaire Entreprises.`;
@@ -573,6 +576,8 @@ async function fetchIcipeJobs(existingJobIds) {
         futureDate.setDate(futureDate.getDate() + 14);
         deadlineDate = futureDate.toISOString().split('T')[0];
       }
+      
+      console.log(`   ↳ [COLLECTE ICIPE] "${title}" (Date Limite : ${deadlineDate})`);
 
       jobs.push({
         id,
@@ -696,7 +701,7 @@ async function fetchLinkedinJobs(existingJobIds) {
     
     let validCount = 0;
     for (let i = 1; i < blocks.length; i++) {
-      if (validCount >= 8) break;
+      if (validCount >= 15) break;
       const block = blocks[i];
       
       const urlMatch = block.match(/href="([^"]+)"/i);
@@ -783,7 +788,7 @@ function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
 
-  const maxBlocks = Math.min(jobBlocks.length, 9);
+  const maxBlocks = Math.min(jobBlocks.length, 16);
   for (let i = 1; i < maxBlocks; i++) {
     const block = jobBlocks[i];
     if (!block.includes('class="offre-title"')) continue;
