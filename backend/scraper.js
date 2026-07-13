@@ -118,14 +118,31 @@ Réponds UNIQUEMENT au format JSON brut suivant, sans blocs markdown (pas de \`\
     }]
   };
 
-  try {
-    const response = await postRequest(url, requestData);
-    let textResponse = response.candidates[0].content.parts[0].text.trim();
-    textResponse = textResponse.replace(/^```json/i, '').replace(/```$/, '').trim();
-    return JSON.parse(textResponse);
-  } catch (error) {
-    console.warn("⚠️ Échec structuration Gemini pour:", job.title, error.message);
-    return null;
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const response = await postRequest(url, requestData);
+      if (!response || !response.candidates || !response.candidates[0]) {
+        throw new Error("Réponse de Gemini vide ou invalide");
+      }
+      let textResponse = response.candidates[0].content.parts[0].text.trim();
+      
+      // Extraction robuste du bloc JSON
+      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        textResponse = jsonMatch[0];
+      }
+      
+      return JSON.parse(textResponse);
+    } catch (error) {
+      retries--;
+      if (retries === 0) {
+        console.warn(`⚠️ Échec final de structuration Gemini pour "${job.title}":`, error.message);
+        return null;
+      }
+      console.warn(`⚠️ Échec temporaire pour "${job.title}" (${error.message}). Nouvelle tentative dans 6 secondes... (${retries} restantes)`);
+      await new Promise(resolve => setTimeout(resolve, 6000));
+    }
   }
 }
 
