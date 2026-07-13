@@ -132,6 +132,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function formatDeadlineWithRemainingDays(deadlineDate, isShort = false) {
+        if (!deadlineDate) return "Non spécifiée";
+        
+        try {
+            const parts = deadlineDate.split('-');
+            const months = isShort 
+                ? ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juill.", "août", "sept.", "oct.", "nov.", "déc."]
+                : ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+            const formattedDate = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
+            
+            const limitDateObj = new Date(deadlineDate + 'T00:00:00');
+            const todayObj = new Date();
+            todayObj.setHours(0, 0, 0, 0);
+            
+            const timeDiff = limitDateObj.getTime() - todayObj.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            if (daysDiff < 0) {
+                return `${formattedDate} (Expirée)`;
+            } else if (daysDiff === 0) {
+                return `${formattedDate} (Dernier jour !)`;
+            } else if (daysDiff === 1) {
+                return `${formattedDate} (Il reste 1 jour)`;
+            } else {
+                return `${formattedDate} (Il reste ${daysDiff} jours)`;
+            }
+        } catch (e) {
+            return deadlineDate;
+        }
+    }
+
 
     // 3. Real jobs list from all targeted Burkinabe boards (Current Date: 2026-06-29)
     const SIMULATED_LOCAL_JOBS = [
@@ -297,7 +328,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
 
-    const currentDate = new Date("2026-06-29");
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
 
     // Récupérer la liste des jobs (locale ou Supabase)
     async function getActiveJobsList() {
@@ -375,12 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.className = job.isPinned ? "home-job-card job-pinned" : "home-job-card";
             card.setAttribute('data-job-title', job.title);
 
-            let dateLimitStr = "Non spécifiée";
-            if (job.deadlineDate) {
-                const parts = job.deadlineDate.split('-');
-                const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juill.", "août", "sept.", "oct.", "nov.", "déc."];
-                dateLimitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
-            }
+            const dateLimitStr = formatDeadlineWithRemainingDays(job.deadlineDate, true);
 
             card.innerHTML = `
                 <div class="home-job-header">
@@ -717,12 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('detail-job-source').style.display = 'inline-block';
         document.getElementById('detail-job-source').innerHTML = `<i class="fa-solid fa-globe"></i> Source : ${job.source}`;
         
-        let limitStr = "Non spécifiée";
-        if (job.deadlineDate) {
-            const parts = job.deadlineDate.split('-');
-            const months = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juill.", "août", "sept.", "oct.", "nov.", "déc."];
-            limitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
-        }
+        const limitStr = formatDeadlineWithRemainingDays(job.deadlineDate, false);
         document.getElementById('detail-job-deadline').innerHTML = `<i class="fa-solid fa-calendar-days"></i> Limite : ${limitStr}`;
         const formattedDesc = job.description
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -800,12 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        let dateLimitStr = "Non spécifiée";
-        if (match.job.deadlineDate) {
-            const parts = match.job.deadlineDate.split('-');
-            const months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-            dateLimitStr = `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}`;
-        }
+        const dateLimitStr = formatDeadlineWithRemainingDays(match.job.deadlineDate, false);
 
         const sourceDisplayHtml = isUserRegistered 
             ? `<span><i class="fa-solid fa-globe"></i> ${match.job.source}</span>`
