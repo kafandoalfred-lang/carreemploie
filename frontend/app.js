@@ -327,25 +327,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         return bTime - aTime;
                     });
                 } else if (data && data.length === 0) {
-                    console.log("🌱 Supabase vide. Seeding automatique des offres d'emploi...");
-                    const jobsToSeed = SIMULATED_LOCAL_JOBS.map(j => ({
-                        id: j.id,
-                        title: j.title,
-                        company: j.company,
-                        location: j.location,
-                        description: j.description,
-                        source: j.source,
-                        url: j.url,
-                        deadline_date: j.deadlineDate
-                    }));
-                    await supabase.from('jobs').insert(jobsToSeed);
-                    console.log("🌱 Seeding Supabase terminé !");
+                    console.log("🌱 Supabase vide. En attente de la collecte du robot.");
                 }
             } catch (err) {
-                console.warn("⚠️ Supabase jobs inaccessible, chargement secours local.", err);
+                console.warn("⚠️ Supabase jobs inaccessible.", err);
             }
         }
-        return SIMULATED_LOCAL_JOBS;
+        return [];
     }
 
 

@@ -1166,9 +1166,10 @@ async function runScraper() {
 
     if (GEMINI_API_KEY && jobsToStructure.length > 0) {
       console.log(`\n🤖 Structuration par l'IA (Gemini) de ${jobsToStructure.length} offres non structurées...`);
-      const jobsToProcess = jobsToStructure.slice(0, 15);
-      for (const job of jobsToProcess) {
-        console.log(`   🔍 Analyse & structuration pour: "${job.title}" (${job.company})...`);
+      const jobsToProcess = jobsToStructure.slice(0, 80);
+      for (let i = 0; i < jobsToProcess.length; i++) {
+        const job = jobsToProcess[i];
+        console.log(`   🔍 [${i + 1}/${jobsToProcess.length}] Analyse & structuration pour: "${job.title}" (${job.company})...`);
         const result = await analyzeAndStructureJobWithGemini(job, GEMINI_API_KEY);
         if (result) {
           job.description = result.structuredDescription;
@@ -1181,6 +1182,11 @@ async function runScraper() {
             console.log(`     📅 Date limite mise à jour par l'IA : ${job.deadlineDate}`);
           }
           console.log(`     ✅ Offre structurée et lien direct configuré : ${job.url}`);
+        }
+        
+        // Attendre 4,5 secondes pour respecter la limite de 15 requêtes par minute (RPM) de Gemini Flash
+        if (i < jobsToProcess.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 4500));
         }
       }
     } else {
