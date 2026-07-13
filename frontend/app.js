@@ -305,18 +305,21 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { data, error } = await supabase.from('jobs').select('*');
                 if (data && data.length > 0) {
-                    return data.map(j => ({
-                        id: j.id,
-                        title: j.title,
-                        company: j.company,
-                        location: j.location,
-                        description: j.description,
-                        source: j.source,
-                        url: j.url,
-                        deadlineDate: j.deadline_date,
-                        isPinned: j.is_pinned || false,
-                        scrapedAt: j.scraped_at || ""
-                    })).sort((a, b) => {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    return data
+                        .filter(j => !j.deadline_date || j.deadline_date >= todayStr)
+                        .map(j => ({
+                            id: j.id,
+                            title: j.title,
+                            company: j.company,
+                            location: j.location,
+                            description: j.description,
+                            source: j.source,
+                            url: j.url,
+                            deadlineDate: j.deadline_date,
+                            isPinned: j.is_pinned || false,
+                            scrapedAt: j.scraped_at || ""
+                        })).sort((a, b) => {
                         if (a.isPinned && !b.isPinned) return -1;
                         if (!a.isPinned && b.isPinned) return 1;
                         const aTime = a.scrapedAt ? new Date(a.scrapedAt).getTime() : 0;

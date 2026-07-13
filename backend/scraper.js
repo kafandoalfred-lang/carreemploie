@@ -466,7 +466,7 @@ async function fetchReliefWebJobs() {
   }
 }
 
-async function fetchIcipeJobs() {
+async function fetchIcipeJobs(existingJobIds) {
   const url = "https://www.ici-pe.com/jm-ajax/get_listings/";
   const payload = {
     per_page: 25,
@@ -508,6 +508,37 @@ async function fetchIcipeJobs() {
         continue;
       }
       
+      const postIdMatch = block.match(/post-([0-9]+)/i);
+      const id = `job_icipe_${postIdMatch ? postIdMatch[1] : Math.abs(hashCode(jobUrl))}`;
+      
+      // Si l'offre existe déjà, pas besoin de télécharger la description
+      if (existingJobIds && existingJobIds.has(id)) {
+        continue;
+      }
+
+      // Récupérer la description complète en téléchargeant la page de détails
+      let description = "";
+      try {
+        console.log(`     📥 Téléchargement des détails pour l'offre ici-pe.com: ${title}...`);
+        const detailHtml = await getRequest(jobUrl);
+        const descMatch = detailHtml.match(/<div class="job_description[^>]*>([\s\S]*?)<\/div>/i) || detailHtml.match(/<div class="post-content[^>]*>([\s\S]*?)<\/div>/i);
+        if (descMatch) {
+          description = descMatch[1]
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<li>/gi, '\n- ')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\n\s*\n+/g, '\n\n')
+            .trim();
+        }
+      } catch (detailErr) {
+        console.warn(`     ⚠️ Échec du téléchargement de la description pour ici-pe.com:`, detailErr.message);
+      }
+
+      if (!description) {
+        description = `Offre de recrutement pour le poste de ${title} à ${location}. Recrutement géré par le cabinet ICI Partenaire Entreprises.`;
+      }
+      
       const deadlineMatch = block.match(/<li class="application-deadline[^>]*>(?:<label>[^<]+<\/label>)?\s*([^<]+)<\/li>/i);
       let deadlineDate = "";
       if (deadlineMatch) {
@@ -520,11 +551,6 @@ async function fetchIcipeJobs() {
         futureDate.setDate(futureDate.getDate() + 14);
         deadlineDate = futureDate.toISOString().split('T')[0];
       }
-
-      const postIdMatch = block.match(/post-([0-9]+)/i);
-      const id = `job_icipe_${postIdMatch ? postIdMatch[1] : Math.abs(hashCode(jobUrl))}`;
-      
-      const description = `Offre de recrutement pour le poste de ${title} à ${location}. Recrutement géré par le cabinet ICI Partenaire Entreprises. Veuillez postuler via le lien direct ou consulter les instructions pour constituer votre dossier.`;
 
       jobs.push({
         id,
@@ -545,6 +571,7 @@ async function fetchIcipeJobs() {
     return [];
   }
 }
+
 
 function parseFrenchDateToIso(dateStr) {
   try {
@@ -1001,7 +1028,7 @@ async function runScraper() {
     // CRAWLING RÉEL : ici-pe.com (ICI Partenaire Entreprises)
     console.log("\n🌐 Chargement des offres depuis l'AJAX de ici-pe.com...");
     try {
-      const icipeJobs = await fetchIcipeJobs();
+      const icipeJobs = await fetchIcipeJobs(existingJobIds);
       console.log(`   ↳ ${icipeJobs.length} offres extraites de ici-pe.com.`);
       
       icipeJobs.forEach(job => {
@@ -1088,6 +1115,20 @@ async function runScraper() {
       }
     } else {
       console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou toutes les offres sont déjà structurées.");
+    }
+
+    // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES --
+    const todayStr = new Date().toISOString().split('T')[0];
+    const initialJobsCount = dbData.jobs.length;
+    const expiredJobs = dbData.jobs.filter(job => job.deadlineDate && job.deadlineDate < todayStr);
+    
+    if (expiredJobs.length > 0) {
+      console.log(`\n🧹 Purge de ${expiredJobs.length} offres d'emploi expirées de database.json...`);
+      for (const expiredJob of expiredJobs) {
+        console.log(`   🚫 Retrait de l'offre expirée : "${expiredJob.title}" (date limite : ${expiredJob.deadlineDate})`);
+        await deleteJobFromSupabase(expiredJob.id);
+      }
+      dbData.jobs = dbData.jobs.filter(job => !expiredJobs.some(ej => ej.id === job.id));
     }
 
     // Écriture locale de secours
