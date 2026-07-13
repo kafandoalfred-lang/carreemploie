@@ -628,6 +628,55 @@ function parseFrenchDateToIso(dateStr) {
   }
 }
 
+function extractFrenchDateFromText(text) {
+  if (!text) return null;
+  
+  const months = {
+    'janvier': '01', 'janv': '01', 'jan': '01',
+    'février': '02', 'fevr': '02', 'févr': '02', 'fev': '02',
+    'mars': '03', 'mar': '03',
+    'avril': '04', 'avr': '04',
+    'mai': '05',
+    'juin': '06', 'jui': '06',
+    'juillet': '07', 'juil': '07', 'juill': '07',
+    'août': '08', 'aout': '08', 'aou': '08',
+    'septembre': '09', 'sept': '09', 'sep': '09',
+    'octobre': '10', 'oct': '10',
+    'novembre': '11', 'nov': '11',
+    'décembre': '12', 'déc': '12', 'dec': '12'
+  };
+
+  const cleanText = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#8211;/g, '-')
+    .replace(/\s+/g, ' ');
+
+  const regex1 = /le\s+(?:(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s+)?([0-9]{1,2})\s+([a-zéû]+)\s+([0-9]{4})/i;
+  const match1 = cleanText.match(regex1);
+  if (match1) {
+    const day = match1[1].padStart(2, '0');
+    const monthName = match1[2].toLowerCase();
+    const year = match1[3];
+    
+    for (const [key, val] of Object.entries(months)) {
+      if (monthName.startsWith(key)) {
+        return `${year}-${val}-${day}`;
+      }
+    }
+  }
+
+  const regex2 = /\b([0-9]{1,2})[\/\-]([0-9]{1,2})[\/\-]([0-9]{4})\b/;
+  const match2 = cleanText.match(regex2);
+  if (match2) {
+    const day = match2[1].padStart(2, '0');
+    const month = match2[2].padStart(2, '0');
+    const year = match2[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  return null;
+}
+
 function hashCode(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -1219,19 +1268,33 @@ async function runScraper() {
       console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou toutes les offres sont déjà structurées.");
     }
 
-    // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES --
+    // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES OU SANS DATE LIMITE --
     const todayStr = new Date().toISOString().split('T')[0];
-    const initialJobsCount = dbData.jobs.length;
-    const expiredJobs = dbData.jobs.filter(job => job.deadlineDate && job.deadlineDate < todayStr);
+    const activeJobs = [];
     
-    if (expiredJobs.length > 0) {
-      console.log(`\n🧹 Purge de ${expiredJobs.length} offres d'emploi expirées de database.json...`);
-      for (const expiredJob of expiredJobs) {
-        console.log(`   🚫 Retrait de l'offre expirée : "${expiredJob.title}" (date limite : ${expiredJob.deadlineDate})`);
-        await deleteJobFromSupabase(expiredJob.id);
+    console.log("\n🧹 Analyse et filtrage des offres (dates limites et expiration)...");
+    for (const job of dbData.jobs) {
+      // Tenter d'extraire la date limite depuis la description brute (locale ou IA)
+      const extDate = extractFrenchDateFromText(job.description);
+      if (extDate) {
+        job.deadlineDate = extDate;
       }
-      dbData.jobs = dbData.jobs.filter(job => !expiredJobs.some(ej => ej.id === job.id));
+      
+      const hasNoDeadline = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
+      const isExpired = job.deadlineDate && job.deadlineDate < todayStr;
+      
+      if (hasNoDeadline || isExpired) {
+        if (hasNoDeadline) {
+          console.log(`   🚫 Retrait (Pas de date limite) : "${job.title}" (${job.company})`);
+        } else {
+          console.log(`   🚫 Retrait (Offre expirée) : "${job.title}" (${job.company}) - Date limite : ${job.deadlineDate}`);
+        }
+        await deleteJobFromSupabase(job.id);
+      } else {
+        activeJobs.push(job);
+      }
     }
+    dbData.jobs = activeJobs;
 
     // Écriture locale de secours
     fs.writeFileSync(DB_PATH, JSON.stringify(dbData, null, 2), 'utf8');
