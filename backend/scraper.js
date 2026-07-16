@@ -322,11 +322,6 @@ function parseBfemploiHtml(html) {
       }
     }
     
-    if (!deadlineDate) {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 20);
-      deadlineDate = futureDate.toISOString().split('T')[0];
-    }
 
     jobs.push({
       id,
@@ -525,10 +520,6 @@ async function fetchReliefWebJobs() {
       let deadlineDate = "";
       if (fields.date && fields.date.closing) {
         deadlineDate = fields.date.closing.split('T')[0];
-      } else {
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 14);
-        deadlineDate = futureDate.toISOString().split('T')[0];
       }
       
       return {
@@ -632,11 +623,7 @@ async function fetchIcipeJobs(existingJobIds) {
         deadlineDate = parseFrenchDateToIso(rawDeadline);
       }
       
-      if (!deadlineDate) {
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 14);
-        deadlineDate = futureDate.toISOString().split('T')[0];
-      }
+
       
       console.log(`   ↳ [COLLECTE ICIPE] "${title}" (Date Limite : ${deadlineDate})`);
 
@@ -823,9 +810,7 @@ async function fetchLinkedinJobs(existingJobIds) {
         description = `Offre de recrutement pour le poste de ${title} chez ${company} à ${location}. Veuillez consulter les détails complets sur la fiche d'origine.`;
       }
 
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 14);
-      const deadlineDate = futureDate.toISOString().split('T')[0];
+      const deadlineDate = "";
       
       jobs.push({
         id,
@@ -1306,6 +1291,37 @@ async function runScraper() {
       console.warn("⚠️ Impossible de crawler LinkedIn :", crawlErr.message);
     }
 
+    // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES OU SANS DATE LIMITE --
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeJobs = [];
+    
+    console.log("\n🧹 Analyse et filtrage des offres (dates limites et expiration)...");
+    for (const job of dbData.jobs) {
+      // Tenter d'extraire la date limite depuis la description uniquement s'il n'y en a pas déjà une de valide
+      const hasNoDeadlineBefore = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
+      if (hasNoDeadlineBefore) {
+        const extDate = extractFrenchDateFromText(job.description);
+        if (extDate) {
+          job.deadlineDate = extDate;
+        }
+      }
+      
+      const hasNoDeadline = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
+      const isExpired = job.deadlineDate && job.deadlineDate < todayStr;
+      
+      if (hasNoDeadline || isExpired) {
+        if (hasNoDeadline) {
+          console.log(`   🚫 Retrait (Pas de date limite) : "${job.title}" (${job.company})`);
+        } else {
+          console.log(`   🚫 Retrait (Offre expirée) : "${job.title}" (${job.company}) - Date limite : ${job.deadlineDate}`);
+        }
+        await deleteJobFromSupabase(job.id);
+      } else {
+        activeJobs.push(job);
+      }
+    }
+    dbData.jobs = activeJobs;
+
     // -- STRUCTURATION IA AVEC GEMINI --
     const jobsToStructure = dbData.jobs.filter(job => {
       return job.description && !job.description.includes("🎓") && !job.description.includes("Diplômes requis");
@@ -1339,37 +1355,6 @@ async function runScraper() {
     } else {
       console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou toutes les offres sont déjà structurées.");
     }
-
-    // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES OU SANS DATE LIMITE --
-    const todayStr = new Date().toISOString().split('T')[0];
-    const activeJobs = [];
-    
-    console.log("\n🧹 Analyse et filtrage des offres (dates limites et expiration)...");
-    for (const job of dbData.jobs) {
-      // Tenter d'extraire la date limite depuis la description uniquement s'il n'y en a pas déjà une de valide
-      const hasNoDeadlineBefore = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
-      if (hasNoDeadlineBefore) {
-        const extDate = extractFrenchDateFromText(job.description);
-        if (extDate) {
-          job.deadlineDate = extDate;
-        }
-      }
-      
-      const hasNoDeadline = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
-      const isExpired = job.deadlineDate && job.deadlineDate < todayStr;
-      
-      if (hasNoDeadline || isExpired) {
-        if (hasNoDeadline) {
-          console.log(`   🚫 Retrait (Pas de date limite) : "${job.title}" (${job.company})`);
-        } else {
-          console.log(`   🚫 Retrait (Offre expirée) : "${job.title}" (${job.company}) - Date limite : ${job.deadlineDate}`);
-        }
-        await deleteJobFromSupabase(job.id);
-      } else {
-        activeJobs.push(job);
-      }
-    }
-    dbData.jobs = activeJobs;
 
     // Écriture locale de secours
     fs.writeFileSync(DB_PATH, JSON.stringify(dbData, null, 2), 'utf8');
