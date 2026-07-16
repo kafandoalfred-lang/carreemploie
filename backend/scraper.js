@@ -683,7 +683,14 @@ function parseFrenchDateToIso(dateStr) {
 
 function extractFrenchDateFromText(text) {
   if (!text) return null;
-  
+
+  // Normaliser le texte (balises, espaces, caractères spéciaux)
+  const cleanText = text
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#8211;/g, '-')
+    .replace(/\s+/g, ' ');
+
   const months = {
     'janvier': '01', 'janv': '01', 'jan': '01',
     'février': '02', 'fevr': '02', 'févr': '02', 'fev': '02',
@@ -702,35 +709,73 @@ function extractFrenchDateFromText(text) {
     'october': '10', 'november': '11', 'december': '12'
   };
 
-  const cleanText = text
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#8211;/g, '-')
-    .replace(/\s+/g, ' ');
+  const deadlineKeywords = [
+    'limite', 'cloture', 'clôture', 'tard', 'jusqu\'au', 'avant le', 
+    'deadline', 'closing', 'apply before', 'date de fin'
+  ];
 
-  const regex1 = /(?:le|on|by)?\s*\b([0-9]{1,2})\s+([a-zéû]+)\s+([0-9]{4})\b/i;
-  const match1 = cleanText.match(regex1);
-  if (match1) {
-    const day = match1[1].padStart(2, '0');
-    const monthName = match1[2].toLowerCase();
-    const year = match1[3];
+  const datesFound = [];
+
+  // 1. Recherche des dates textuelles : DD Month YYYY
+  const textDateRegex = /\b([0-9]{1,2})\s+([a-zéû]{3,10})\s+([0-9]{4})\b/gi;
+  let match;
+  while ((match = textDateRegex.exec(cleanText)) !== null) {
+    const day = match[1].padStart(2, '0');
+    const monthName = match[2].toLowerCase();
+    const year = match[3];
     
+    let monthVal = null;
     for (const [key, val] of Object.entries(months)) {
       if (monthName.startsWith(key)) {
-        return `${year}-${val}-${day}`;
+        monthVal = val;
+        break;
       }
+    }
+    
+    if (monthVal) {
+      datesFound.push({
+        iso: `${year}-${monthVal}-${day}`,
+        index: match.index,
+        text: match[0]
+      });
     }
   }
 
-  const regex2 = /\b([0-9]{1,2})[\/\-]([0-9]{1,2})[\/\-]([0-9]{4})\b/;
-  const match2 = cleanText.match(regex2);
-  if (match2) {
-    const day = match2[1].padStart(2, '0');
-    const month = match2[2].padStart(2, '0');
-    const year = match2[3];
-    return `${year}-${month}-${day}`;
+  // 2. Recherche des dates numériques : DD/MM/YYYY etc.
+  const numericDateRegex = /\b([0-9]{1,2})[\/\-\.]([0-9]{1,2})[\/\-\.]([0-9]{4})\b/gi;
+  while ((match = numericDateRegex.exec(cleanText)) !== null) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
+    datesFound.push({
+      iso: `${year}-${month}-${day}`,
+      index: match.index,
+      text: match[0]
+    });
   }
 
-  return null;
+  if (datesFound.length === 0) {
+    return null;
+  }
+
+  // Trier par ordre d'apparition
+  datesFound.sort((a, b) => a.index - b.index);
+
+  // Vérifier la proximité d'un mot-clé de deadline (dans les 100 caractères précédents)
+  for (let i = datesFound.length - 1; i >= 0; i--) {
+    const dateObj = datesFound[i];
+    const startIndex = Math.max(0, dateObj.index - 100);
+    const contextText = cleanText.substring(startIndex, dateObj.index).toLowerCase();
+    
+    const hasKeyword = deadlineKeywords.some(keyword => contextText.includes(keyword));
+    if (hasKeyword) {
+      return dateObj.iso;
+    }
+  }
+
+  // Repli : si aucun mot-clé n'est détecté, on prend la dernière date du texte
+  const lastDate = datesFound[datesFound.length - 1];
+  return lastDate.iso;
 }
 
 function hashCode(str) {
