@@ -1346,10 +1346,13 @@ async function runScraper() {
     
     console.log("\n🧹 Analyse et filtrage des offres (dates limites et expiration)...");
     for (const job of dbData.jobs) {
-      // Tenter d'extraire la date limite depuis la description brute (locale ou IA)
-      const extDate = extractFrenchDateFromText(job.description);
-      if (extDate) {
-        job.deadlineDate = extDate;
+      // Tenter d'extraire la date limite depuis la description uniquement s'il n'y en a pas déjà une de valide
+      const hasNoDeadlineBefore = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
+      if (hasNoDeadlineBefore) {
+        const extDate = extractFrenchDateFromText(job.description);
+        if (extDate) {
+          job.deadlineDate = extDate;
+        }
       }
       
       const hasNoDeadline = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
