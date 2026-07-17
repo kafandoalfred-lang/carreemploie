@@ -1267,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const message = `Bonjour carréemploie, je suis ${fullname} (Tél: ${phone}, E-mail: ${email}). Je souhaite m'abonner au Forfait Premium "${planName}" (${planPrice}). Merci de me contacter pour valider mon paiement Mobile Money.`;
             
             // 1. Ouvrir WhatsApp avec les détails pré-remplis
-            const waUrl = `https://wa.me/22656911674?text=${encodeURIComponent(message)}`;
+            const waUrl = `https://wa.me/22664966934?text=${encodeURIComponent(message)}`;
             window.open(waUrl, '_blank');
             
             // 2. Ouvrir le mail pré-rempli à l'administrateur
