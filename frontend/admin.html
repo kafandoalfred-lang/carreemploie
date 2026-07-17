@@ -106,7 +106,10 @@
         <section id="section-jobs" class="admin-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="font-size: 1.3rem;"><i class="fa-solid fa-folder-open"></i> Catalogue des offres d'emploi</h2>
-                <button id="btn-add-job-modal" class="btn-admin-action"><i class="fa-solid fa-plus"></i> Créer une offre</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btn-tiktok-import-modal" class="btn-admin-action" style="background: #000; color: #fff; border-color: #000;"><i class="fa-brands fa-tiktok"></i> Importer TikTok</button>
+                    <button id="btn-add-job-modal" class="btn-admin-action"><i class="fa-solid fa-plus"></i> Créer une offre</button>
+                </div>
             </div>
             <div class="admin-table-wrapper">
                 <table class="admin-table">
@@ -130,6 +133,36 @@
             </div>
         </section>
 
+    </div>
+
+    </div>
+
+    <!-- Modal : Importer TikTok -->
+    <div id="tiktok-modal" class="admin-modal">
+        <div class="admin-modal-content" style="max-width: 500px;">
+            <div class="admin-modal-header">
+                <h2><i class="fa-brands fa-tiktok"></i> Importer une offre TikTok</h2>
+                <button type="button" class="btn-close-modal" onclick="closeTiktokModal()">&times;</button>
+            </div>
+            <div class="admin-modal-body" style="padding: 20px 0; display: flex; flex-direction: column; gap: 15px;">
+                <div class="admin-form-group">
+                    <label for="tiktok-url-input" style="font-weight: 500; display: block; margin-bottom: 5px;">Lien de la vidéo TikTok *</label>
+                    <input type="text" id="tiktok-url-input" placeholder="https://www.tiktok.com/@username/video/..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--form-border-color); box-sizing: border-box;">
+                </div>
+                <div class="admin-form-group">
+                    <label for="tiktok-gemini-key" style="font-weight: 500; display: block; margin-bottom: 5px;">Clé API Gemini (Optionnel - Pour extraction par l'IA)</label>
+                    <input type="password" id="tiktok-gemini-key" placeholder="AIzaSy..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--form-border-color); box-sizing: border-box;">
+                    <small style="color: var(--admin-text-sub); display: block; margin-top: 5px;">Si configurée, l'IA extraira automatiquement l'intitulé, l'entreprise, etc.</small>
+                </div>
+                <div id="tiktok-import-status" style="font-size: 0.9rem; color: var(--primary-color); display: none;">
+                    <i class="fa-solid fa-spinner fa-spin"></i> <span id="tiktok-import-status-text">Récupération des métadonnées de la vidéo...</span>
+                </div>
+            </div>
+            <div class="admin-modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                <button type="button" class="btn-admin-cancel" onclick="closeTiktokModal()">Annuler</button>
+                <button type="button" id="btn-submit-tiktok-import" class="btn-admin-action" style="background: #000; color: #fff; border-color: #000;">Lancer l'extraction</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal : Add/Edit Job -->
@@ -235,6 +268,13 @@
         const btnAddJobModal = document.getElementById('btn-add-job-modal');
         const jobModal = document.getElementById('job-modal');
         const jobForm = document.getElementById('job-form');
+        const btnTiktokImportModal = document.getElementById('btn-tiktok-import-modal');
+        const tiktokModal = document.getElementById('tiktok-modal');
+        const tiktokUrlInput = document.getElementById('tiktok-url-input');
+        const tiktokGeminiKey = document.getElementById('tiktok-gemini-key');
+        const tiktokImportStatus = document.getElementById('tiktok-import-status');
+        const tiktokImportStatusText = document.getElementById('tiktok-import-status-text');
+        const btnSubmitTiktokImport = document.getElementById('btn-submit-tiktok-import');
 
         // State variables
         let isEditing = false;
@@ -629,6 +669,189 @@
             if (jobModal) jobModal.classList.remove('open');
         }
 
+        // TikTok Import Functions
+        function openTiktokModal() {
+            if (tiktokUrlInput) tiktokUrlInput.value = "";
+            if (tiktokImportStatus) tiktokImportStatus.style.display = "none";
+            if (tiktokGeminiKey) {
+                tiktokGeminiKey.value = localStorage.getItem('gemini_api_key') || "";
+            }
+            if (tiktokModal) tiktokModal.classList.add('open');
+        }
+
+        function closeTiktokModal() {
+            if (tiktokModal) tiktokModal.classList.remove('open');
+        }
+
+        function extractDateFallback(text) {
+          if (!text) return "";
+          const months = {
+            'janvier': '01', 'janv': '01', 'jan': '01',
+            'février': '02', 'fevr': '02', 'févr': '02', 'fev': '02',
+            'mars': '03', 'mar': '03',
+            'avril': '04', 'avr': '04',
+            'mai': '05',
+            'juin': '06', 'jui': '06',
+            'juillet': '07', 'juil': '07', 'juill': '07',
+            'août': '08', 'aout': '08', 'aou': '08',
+            'septembre': '09', 'sept': '09', 'sep': '09',
+            'octobre': '10', 'oct': '10',
+            'novembre': '11', 'nov': '11',
+            'décembre': '12', 'déc': '12', 'dec': '12',
+            'january': '01', 'february': '02', 'march': '03', 'april': '04', 
+            'june': '06', 'july': '07', 'august': '08', 'september': '09', 
+            'october': '10', 'november': '11', 'december': '12'
+          };
+
+          const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+          const regex1 = /(?:le|on|by)?\s*\b([0-9]{1,2})\s+([a-zéû]+)\s+([0-9]{4})\b/i;
+          const match1 = cleanText.match(regex1);
+          if (match1) {
+            const day = match1[1].padStart(2, '0');
+            const monthName = match1[2].toLowerCase();
+            const year = match1[3];
+            for (const [key, val] of Object.entries(months)) {
+              if (monthName.startsWith(key)) {
+                return `${year}-${val}-${day}`;
+              }
+            }
+          }
+
+          const regex2 = /\b([0-9]{1,2})[\/\-\.]([0-9]{1,2})[\/\-\.]([0-9]{4})\b/;
+          const match2 = cleanText.match(regex2);
+          if (match2) {
+            const day = match2[1].padStart(2, '0');
+            const month = match2[2].padStart(2, '0');
+            const year = match2[3];
+            return `${year}-${month}-${day}`;
+          }
+          return "";
+        }
+
+        async function handleTiktokImport() {
+            const url = tiktokUrlInput.value.trim();
+            if (!url) {
+                showToast("Veuillez saisir un lien de vidéo TikTok valide !", "error");
+                return;
+            }
+
+            if (!url.toLowerCase().includes('tiktok.com')) {
+                showToast("Le lien fourni n'est pas un lien TikTok valide !", "error");
+                return;
+            }
+
+            const geminiKey = tiktokGeminiKey.value.trim();
+            if (geminiKey) {
+                localStorage.setItem('gemini_api_key', geminiKey);
+            }
+
+            tiktokImportStatus.style.display = "block";
+            tiktokImportStatusText.textContent = "Téléchargement de la description TikTok...";
+
+            try {
+                // 1. Appel de l'API TikWM via allorigins pour éviter CORS
+                const tikwmApiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(tikwmApiUrl)}`;
+                
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error("Erreur de proxy de téléchargement.");
+                
+                const wrapperJson = await response.json();
+                const tikwmResponse = JSON.parse(wrapperJson.contents);
+                
+                if (tikwmResponse.code !== 0 || !tikwmResponse.data) {
+                    throw new Error(tikwmResponse.msg || "Aucune donnée de vidéo retournée.");
+                }
+
+                const caption = tikwmResponse.data.title || "";
+                console.log("📝 Description TikTok récupérée :", caption);
+
+                let title = "Poste (via TikTok)";
+                let company = "Recruteur TikTok";
+                let location = "Ouagadougou";
+                let deadlineDate = extractDateFallback(caption);
+                let description = caption;
+                let directContact = url;
+
+                // 2. Si clé API Gemini configurée, appeler Gemini
+                if (geminiKey) {
+                    tiktokImportStatusText.textContent = "Analyse et structuration par l'IA Gemini...";
+                    try {
+                        const prompt = `Tu es un assistant de recrutement. Analyse cette description de poste provenant d'une vidéo TikTok et renvoie uniquement un objet JSON valide avec les champs suivants :
+- "title": le titre du poste (ex: "Secrétaire Comptable", court et pro, en français)
+- "company": le nom de l'entreprise qui recrute (si non mentionné, utilise "Entreprise Partenaire")
+- "location": la ville de l'offre au Burkina Faso (ex: "Ouagadougou" ou "Bobo-Dioulasso", par défaut "Ouagadougou")
+- "deadlineDate": la date limite de soumission au format YYYY-MM-DD (si non mentionné, laisse vide "")
+- "directApplicationUrl": l'adresse email ou le numéro de contact direct mentionné dans l'offre pour postuler (ex: mailto:contact@entreprise.com ou https://wa.me/226xxxxxxxx)
+- "structuredDescription": une description propre et professionnelle de l'offre rédigée en français avec des puces.
+
+Voici la description à analyser :
+${caption}
+
+Renvoie uniquement le code JSON valide, sans balise de bloc de code markdown.`;
+
+                        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+                        const geminiBody = {
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }]
+                        };
+
+                        const geminiRes = await fetch(geminiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(geminiBody)
+                        });
+
+                        if (geminiRes.ok) {
+                            const geminiJson = await geminiRes.json();
+                            let textResult = geminiJson.candidates[0].content.parts[0].text;
+                            // Enlever d'éventuels backticks markdown
+                            textResult = textResult.replace(/```json/i, '').replace(/```/g, '').trim();
+                            
+                            const parsed = JSON.parse(textResult);
+                            title = parsed.title || title;
+                            company = parsed.company || company;
+                            location = parsed.location || location;
+                            if (parsed.deadlineDate) deadlineDate = parsed.deadlineDate;
+                            description = parsed.structuredDescription || description;
+                            if (parsed.directApplicationUrl) directContact = parsed.directApplicationUrl;
+                        } else {
+                            console.warn("⚠️ API Gemini renvoyé une erreur, utilisation du fallback.");
+                        }
+                    } catch (geminiErr) {
+                        console.warn("⚠️ Échec du traitement IA, utilisation du fallback.", geminiErr);
+                    }
+                }
+
+                // 3. Fermer et ouvrir la modale Job pré-remplie
+                closeTiktokModal();
+                
+                isEditing = false;
+                document.getElementById('form-job-id').value = "";
+                document.getElementById('modal-job-title').textContent = "Créer une offre d'emploi (Import TikTok)";
+                document.getElementById('form-job-title').value = title;
+                document.getElementById('form-job-company').value = company;
+                document.getElementById('form-job-location').value = location;
+                document.getElementById('form-job-deadline').value = deadlineDate;
+                document.getElementById('form-job-source').value = "TikTok";
+                document.getElementById('form-job-url').value = directContact;
+                document.getElementById('form-job-desc').value = description;
+                document.getElementById('form-job-pinned').checked = false;
+
+                if (jobModal) jobModal.classList.add('open');
+                showToast("Offre TikTok extraite avec succès ! Veuillez relire avant d'enregistrer.", "success");
+
+            } catch (err) {
+                console.error("❌ Échec d'importation TikTok :", err);
+                showToast(`Erreur d'importation : ${err.message}`, "error");
+            } finally {
+                tiktokImportStatus.style.display = "none";
+            }
+        }
+
         // 8. Auth Logic
         function handleLogin() {
             const enteredCode = passcodeInput.value.trim();
@@ -722,6 +945,14 @@
                 document.getElementById('form-job-source').value = "Publié en direct";
                 if (jobModal) jobModal.classList.add('open');
             });
+        }
+
+        // TikTok Import click handlers
+        if (btnTiktokImportModal) {
+            btnTiktokImportModal.addEventListener('click', openTiktokModal);
+        }
+        if (btnSubmitTiktokImport) {
+            btnSubmitTiktokImport.addEventListener('click', handleTiktokImport);
         }
 
         // Form Submit
