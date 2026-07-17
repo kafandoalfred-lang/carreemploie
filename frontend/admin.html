@@ -749,12 +749,11 @@
             tiktokImportStatusText.textContent = "Téléchargement de la description TikTok...";
 
             try {
-                // 1. Appel de l'API TikWM via allorigins pour éviter CORS
+                // 1. Appel de l'API TikWM (CORS autorisé nativement)
                 const tikwmApiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(tikwmApiUrl)}`;
                 
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error("Erreur de proxy de téléchargement.");
+                const response = await fetch(tikwmApiUrl);
+                if (!response.ok) throw new Error("Impossible de se connecter au service d'import TikTok.");
                 
                 const tikwmResponse = await response.json();
                 
