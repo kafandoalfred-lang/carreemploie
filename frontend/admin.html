@@ -751,13 +751,12 @@
             try {
                 // 1. Appel de l'API TikWM via allorigins pour éviter CORS
                 const tikwmApiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(tikwmApiUrl)}`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(tikwmApiUrl)}`;
                 
                 const response = await fetch(proxyUrl);
                 if (!response.ok) throw new Error("Erreur de proxy de téléchargement.");
                 
-                const wrapperJson = await response.json();
-                const tikwmResponse = JSON.parse(wrapperJson.contents);
+                const tikwmResponse = await response.json();
                 
                 if (tikwmResponse.code !== 0 || !tikwmResponse.data) {
                     throw new Error(tikwmResponse.msg || "Aucune donnée de vidéo retournée.");
