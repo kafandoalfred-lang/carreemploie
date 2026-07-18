@@ -778,6 +778,97 @@ function extractFrenchDateFromText(text) {
   return lastDate.iso;
 }
 
+async function fetchHumanProjectJobs(existingJobIds) {
+  const url = "https://databases-humanprojectgroup.com/index.php/espace-candidat";
+  const jobs = [];
+
+  try {
+    const html = await getRequest(url);
+    if (!html) {
+      console.warn("⚠️ Pas de HTML retourné par databases-humanprojectgroup.com");
+      return [];
+    }
+
+    const blocks = html.split('<div class="content">');
+    for (let i = 1; i < blocks.length; i++) {
+      const block = blocks[i];
+      if (!block.includes('offre/details/')) continue;
+
+      const urlMatch = block.match(/href="([^"]*offre\/details\/([0-9]+))"/i);
+      if (!urlMatch) continue;
+      const jobUrl = urlMatch[1];
+      const postId = urlMatch[2];
+      const id = `job_humanproject_${postId}`;
+
+      const titleMatch = block.match(/offre\/details\/[0-9]+">([^<]+)<\/a>/i);
+      if (!titleMatch) continue;
+      const title = titleMatch[1].trim();
+
+      const locationMatch = block.match(/<i class="fa fa-map-marker"><\/i>([^<]*)<\/p>/i) || block.match(/<i class="fa fa-map-marker"><\/i>\s*([^<\n]+)/i);
+      let location = locationMatch ? locationMatch[1].replace(/\s+/g, ' ').trim() : "Ouagadougou";
+      if (!location) location = "Ouagadougou";
+
+      const deadlineMatch = block.match(/Date limite\s*:\s*<\/i>\s*<span[^>]*>\s*([0-9\/]+)/i) || block.match(/Date limite[^<]*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i);
+      let deadlineDate = "";
+      if (deadlineMatch) {
+        const parts = deadlineMatch[1].trim().split('/');
+        if (parts.length === 3) {
+          deadlineDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+
+      const companyMatch = block.match(/<i class="fa fa-home"><\/i>([^<]*)<\/p>/i) || block.match(/<i class="fa fa-home"><\/i>\s*([^<\n]+)/i);
+      const company = companyMatch ? companyMatch[1].replace(/\s+/g, ' ').trim() : "HUMAN PROJECT";
+
+      // Si le job existe déjà, pas besoin de le re-scrapper
+      if (existingJobIds && existingJobIds.has(id)) {
+        continue;
+      }
+
+      let description = "";
+      try {
+        console.log(`     📥 Téléchargement des détails pour l'offre Human Project : ${title}...`);
+        const detailHtml = await getRequest(jobUrl);
+        const descMatch = detailHtml.match(/<code>([\s\S]*?)<\/code>/i);
+        if (descMatch) {
+          description = descMatch[1]
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+      } catch (err) {
+        console.warn(`     ⚠️ Impossible de télécharger les détails de Human Project pour "${title}":`, err.message);
+      }
+
+      if (!description) {
+        description = `Offre d'emploi pour le poste de ${title} chez ${company} à ${location}. Veuillez postuler directement sur la plateforme Human Project Group en utilisant le lien officiel.`;
+      }
+
+      jobs.push({
+        id,
+        title,
+        company,
+        location,
+        description,
+        source: "databases-humanprojectgroup.com",
+        url: jobUrl,
+        deadlineDate
+      });
+    }
+  } catch (err) {
+    console.warn("⚠️ Impossible de crawler databases-humanprojectgroup.com :", err.message);
+  }
+
+  return jobs;
+}
+
 function hashCode(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -1289,6 +1380,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler ici-pe.com :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : databases-humanprojectgroup.com (Human Project)
+    console.log("\n🌐 Crawling en direct de databases-humanprojectgroup.com...");
+    try {
+      const humanProjectJobs = await fetchHumanProjectJobs(existingJobIds);
+      console.log(`   ↳ ${humanProjectJobs.length} offres extraites de databases-humanprojectgroup.com.`);
+      
+      humanProjectJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL HUMANPROJECT] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler databases-humanprojectgroup.com :", crawlErr.message);
     }
 
     // CRAWLING RÉEL : LinkedIn Jobs (Offres premium au Burkina)
