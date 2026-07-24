@@ -859,7 +859,8 @@ async function fetchHumanProjectJobs(existingJobIds) {
         description,
         source: "databases-humanprojectgroup.com",
         url: jobUrl,
-        deadlineDate
+        deadlineDate,
+        scrapedAt: new Date().toISOString()
       });
     }
   } catch (err) {
@@ -1462,12 +1463,26 @@ async function runScraper() {
       }
       
       const hasNoDeadline = !job.deadlineDate || job.deadlineDate === "Non spécifiée" || job.deadlineDate.trim() === "";
-      const isExpired = job.deadlineDate && job.deadlineDate < todayStr;
       
-      if (hasNoDeadline || isExpired) {
-        if (hasNoDeadline) {
-          console.log(`   🚫 Retrait (Pas de date limite) : "${job.title}" (${job.company})`);
-        } else {
+      let isExpired = false;
+      if (hasNoDeadline) {
+        // Pour les offres sans date limite, on les garde actives pendant 30 jours après leur date de récupération (scrapedAt)
+        const scrapedDateStr = job.scrapedAt || job.scraped_at || todayStr;
+        const scrapedDate = new Date(scrapedDateStr.split('T')[0]);
+        const todayDate = new Date(todayStr);
+        const ageInMs = todayDate.getTime() - scrapedDate.getTime();
+        const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+        
+        if (ageInDays > 30) {
+          isExpired = true;
+          console.log(`   🚫 Retrait (Sans date limite et plus de 30 jours) : "${job.title}" (${job.company}) - Collectée le : ${scrapedDateStr}`);
+        }
+      } else {
+        isExpired = job.deadlineDate < todayStr;
+      }
+      
+      if (isExpired) {
+        if (!hasNoDeadline) {
           console.log(`   🚫 Retrait (Offre expirée) : "${job.title}" (${job.company}) - Date limite : ${job.deadlineDate}`);
         }
         await deleteJobFromSupabase(job.id);

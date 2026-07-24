@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Prendre toutes les offres actives non expirées et non en attente (sans préfixe pending_)
         const activeJobs = jobsList.filter(job => {
-            const isNotExpired = new Date(job.deadlineDate) >= currentDate;
+            const isNotExpired = !job.deadlineDate || new Date(job.deadlineDate) >= currentDate;
             const isNotPending = !job.id.startsWith('pending_');
             return isNotExpired && isNotPending;
         });
@@ -892,8 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const searchTerms = searchTitleRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
 
             jobsList.forEach(job => {
-                const limit = new Date(job.deadlineDate);
-                if (limit < currentDate) return;
+                if (job.deadlineDate && new Date(job.deadlineDate) < currentDate) return;
 
                 const jobTitle = job.title.toLowerCase();
                 const jobLoc = job.location.toLowerCase();
@@ -1093,8 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const matches = [];
 
             jobsList.forEach(job => {
-                const limit = new Date(job.deadlineDate);
-                if (limit < currentDate) return;
+                if (job.deadlineDate && new Date(job.deadlineDate) < currentDate) return;
 
                 const userKeywords = profile.jobtitle.toLowerCase().split(',').map(t => t.trim()).filter(t => t.length > 0);
                 const jobTitleLower = job.title.toLowerCase();
