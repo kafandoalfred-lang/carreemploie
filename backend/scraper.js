@@ -681,15 +681,36 @@ function parseFrenchDateToIso(dateStr) {
   }
 }
 
+function decodeHtmlEntities(str) {
+  if (!str) return "";
+  return str
+    .replace(/&eacute;/gi, 'é')
+    .replace(/&egrave;/gi, 'è')
+    .replace(/&ecirc;/gi, 'ê')
+    .replace(/&euml;/gi, 'ë')
+    .replace(/&agrave;/gi, 'à')
+    .replace(/&icirc;/gi, 'î')
+    .replace(/&iuml;/gi, 'ï')
+    .replace(/&ocirc;/gi, 'ô')
+    .replace(/&ucirc;/gi, 'û')
+    .replace(/&ccedil;/gi, 'ç')
+    .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec))
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
 function extractFrenchDateFromText(text) {
   if (!text) return null;
 
-  // Normaliser le texte (balises, espaces, caractères spéciaux)
-  const cleanText = text
+  // Normaliser le texte (décoder les entités HTML, balises, espaces, casse)
+  const cleanText = decodeHtmlEntities(text)
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
     .replace(/&#8211;/g, '-')
-    .replace(/\s+/g, ' ');
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
   const months = {
     'janvier': '01', 'janv': '01', 'jan': '01',
@@ -716,8 +737,8 @@ function extractFrenchDateFromText(text) {
 
   const datesFound = [];
 
-  // 1. Recherche des dates textuelles : DD Month YYYY
-  const textDateRegex = /\b([0-9]{1,2})\s+([a-zéû]{3,10})\s+([0-9]{4})\b/gi;
+  // 1. Recherche des dates textuelles : DD Month YYYY (en minuscules uniquement)
+  const textDateRegex = /\b([0-9]{1,2})\s+([a-zéû]{3,10})\s+([0-9]{4})\b/g;
   let match;
   while ((match = textDateRegex.exec(cleanText)) !== null) {
     const day = match[1].padStart(2, '0');
