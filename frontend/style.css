@@ -1511,10 +1511,10 @@ body {
 
 /* Pinned Job Card */
 .job-pinned {
-    border: 1px solid var(--gold-color) !important;
-    box-shadow: 0 0 15px var(--gold-glow) !important;
+    border: 1px solid #f59e0b !important; /* Bordure dorée douce */
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.08) !important;
     position: relative;
-    background: linear-gradient(145deg, #0f172a, #0b0f19) !important;
+    background: #fffdf5 !important; /* Fond crème très léger et lisible */
 }
 
 .job-pinned::before {

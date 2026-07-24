@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4 class="home-job-title">${job.title}</h4>
                         <div class="home-job-company">${job.company}</div>
                     </div>
-                    <span class="home-job-score">${job.isPinned ? '📌 À LA UNE' : '94% match IA'}</span>
+                    <span class="home-job-score">94% match IA</span>
                 </div>
                 <p class="home-job-desc">${job.description.substring(0, 120)}...</p>
                 <div class="home-job-footer" style="border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; margin-bottom: 10px;">
