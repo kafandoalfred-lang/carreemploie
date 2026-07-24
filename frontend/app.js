@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data && data.length > 0) {
                     const todayStr = new Date().toISOString().split('T')[0];
                     return data
-                        .filter(j => !j.deadline_date || j.deadline_date >= todayStr)
+                        .filter(j => (!j.status || j.status !== 'expired') && (!j.deadline_date || j.deadline_date >= todayStr))
                         .map(j => ({
                             id: j.id,
                             title: j.title,
@@ -350,7 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             url: j.url,
                             deadlineDate: j.deadline_date,
                             isPinned: j.is_pinned || false,
-                            scrapedAt: j.scraped_at || ""
+                            scrapedAt: j.scraped_at || "",
+                            status: j.status || 'active'
                         })).sort((a, b) => {
                         if (a.isPinned && !b.isPinned) return -1;
                         if (!a.isPinned && b.isPinned) return 1;

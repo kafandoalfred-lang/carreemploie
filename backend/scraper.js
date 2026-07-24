@@ -1111,7 +1111,8 @@ function uploadJobToSupabase(job) {
     source: job.source,
     url: job.url,
     deadline_date: job.deadlineDate,
-    scraped_at: job.scrapedAt || new Date().toISOString()
+    scraped_at: job.scrapedAt || new Date().toISOString(),
+    status: job.status || 'active'
   });
 
   const parsedUrl = new URL(`${SUPABASE_URL}/rest/v1/jobs`);
@@ -1153,10 +1154,14 @@ function uploadJobToSupabase(job) {
   });
 }
 
-function deleteJobFromSupabase(jobId) {
+function archiveJobOnSupabase(jobId) {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return Promise.resolve();
   }
+
+  const payload = JSON.stringify({
+    status: 'expired'
+  });
 
   const parsedUrl = new URL(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${jobId}`);
   
@@ -1164,23 +1169,34 @@ function deleteJobFromSupabase(jobId) {
     hostname: parsedUrl.hostname,
     port: 443,
     path: parsedUrl.pathname + parsedUrl.search,
-    method: 'DELETE',
+    method: 'PATCH',
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json'
     }
   };
 
   return new Promise((resolve) => {
     const req = https.request(options, (res) => {
-      res.on('data', () => {});
-      res.on('end', () => resolve());
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`[SUPABASE ARCHIVE] Offre ${jobId} marquée comme expirée.`);
+        } else {
+          console.warn(`[SUPABASE WARN] Échec archivage ${jobId}: HTTP ${res.statusCode} - ${body}`);
+        }
+        resolve();
+      });
     });
     
-    req.on('error', () => {
+    req.on('error', (e) => {
+      console.warn(`[SUPABASE ERROR] Erreur archivage ${jobId}:`, e.message);
       resolve();
     });
     
+    req.write(payload);
     req.end();
   });
 }
@@ -1439,9 +1455,9 @@ async function runScraper() {
       });
       
       if (oldLinkedinJobs.length > 0) {
-        console.log(`   🧹 Suppression de ${oldLinkedinJobs.length} anciennes offres LinkedIn invalides sur Supabase...`);
+        console.log(`   🧹 Archivage de ${oldLinkedinJobs.length} anciennes offres LinkedIn invalides sur Supabase...`);
         for (const oldJob of oldLinkedinJobs) {
-          await deleteJobFromSupabase(oldJob.id);
+          await archiveJobOnSupabase(oldJob.id);
           existingJobIds.delete(oldJob.id);
         }
       }
@@ -1506,7 +1522,7 @@ async function runScraper() {
         if (!hasNoDeadline) {
           console.log(`   🚫 Retrait (Offre expirée) : "${job.title}" (${job.company}) - Date limite : ${job.deadlineDate}`);
         }
-        await deleteJobFromSupabase(job.id);
+        await archiveJobOnSupabase(job.id);
       } else {
         activeJobs.push(job);
       }

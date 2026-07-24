@@ -388,11 +388,16 @@
             jobs.forEach(job => {
                 const tr = document.createElement('tr');
                 const isPending = job.id.startsWith('pending_');
+                const isExpired = job.status === 'expired';
                 
                 if (job.is_pinned) {
                     tr.style.backgroundColor = "rgba(245, 158, 11, 0.02)";
                 } else if (isPending) {
                     tr.style.backgroundColor = "rgba(245, 158, 11, 0.05)";
+                }
+                
+                if (isExpired) {
+                    tr.style.opacity = "0.65";
                 }
 
                 let limit = "Aucune limite";
@@ -404,7 +409,7 @@
                     });
                 }
 
-                // Bouton d'action principal (Épingler ou Approuver)
+                // Bouton d'action principal (Épingler, Réactiver ou Approuver)
                 let mainActionBtn = '';
                 if (isPending) {
                     mainActionBtn = `
@@ -413,6 +418,15 @@
                                 style="color: var(--success-color); background: rgba(16, 185, 129, 0.1);" 
                                 title="Approuver et publier cette offre">
                             <i class="fa-solid fa-check"></i>
+                        </button>
+                    `;
+                } else if (isExpired) {
+                    mainActionBtn = `
+                        <button onclick="restoreJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
+                                class="btn-action-icon edit" 
+                                style="color: var(--success-color); background: rgba(16, 185, 129, 0.1);" 
+                                title="Réactiver cette offre">
+                            <i class="fa-solid fa-arrow-rotate-left"></i>
                         </button>
                     `;
                 } else {
@@ -425,11 +439,33 @@
                     `;
                 }
 
+                // Bouton de suppression / archivage
+                let deleteActionBtn = '';
+                if (isExpired) {
+                    deleteActionBtn = `
+                        <button onclick="deleteJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
+                                class="btn-action-icon delete" 
+                                title="Supprimer définitivement de la base de données">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    `;
+                } else {
+                    deleteActionBtn = `
+                        <button onclick="archiveJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
+                                class="btn-action-icon delete" 
+                                style="color: var(--warning-color); border-color: var(--warning-color);"
+                                title="Archiver (marquer comme expirée)">
+                            <i class="fa-solid fa-box-archive"></i>
+                        </button>
+                    `;
+                }
+
                 tr.innerHTML = `
                     <td>
                         <span style="color: var(--text-primary); font-weight: 600;">${job.title}</span>
                         ${job.is_pinned ? ' <span style="color: var(--gold-color); font-size: 0.8rem; font-weight: bold; margin-left: 5px;">★ À la Une</span>' : ''}
                         ${isPending ? ' <span style="color: var(--gold-color); background: rgba(245, 158, 11, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 5px;"><i class="fa-solid fa-clock"></i> En Attente</span>' : ''}
+                        ${isExpired ? ' <span style="color: var(--danger-color); background: rgba(239, 68, 68, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 5px;"><i class="fa-solid fa-box-archive"></i> Archivée</span>' : ''}
                     </td>
                     <td><strong style="color: var(--text-secondary);">${job.company}</strong></td>
                     <td>
@@ -437,7 +473,7 @@
                         <small style="color: var(--admin-text-sub);">${job.source}</small>
                     </td>
                     <td>
-                        <span style="color: ${job.deadline_date && new Date(job.deadline_date) < new Date("2026-06-29") ? 'var(--danger-color)' : 'var(--success-color)'};">
+                        <span style="color: ${job.deadline_date && new Date(job.deadline_date) < new Date() ? 'var(--danger-color)' : 'var(--success-color)'};">
                             ${limit}
                         </span>
                     </td>
@@ -449,11 +485,7 @@
                                     title="Modifier cette offre">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
-                            <button onclick="deleteJob('${job.id}', '${job.title.replace(/'/g, "\\'")}')" 
-                                    class="btn-action-icon delete" 
-                                    title="Supprimer cette offre">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                            ${deleteActionBtn}
                         </div>
                     </td>
                 `;
@@ -471,7 +503,7 @@
 
                 // 2. Insérer une copie avec un ID publié (sans 'pending_')
                 const publishedId = jobId.replace('pending_', 'job_');
-                const publishedJob = { ...job, id: publishedId };
+                const publishedJob = { ...job, id: publishedId, status: 'active' };
                 
                 const { error: insertErr } = await supabaseClient.from('jobs').insert(publishedJob);
                 if (insertErr) throw insertErr;
@@ -610,6 +642,46 @@
             } catch (err) {
                 console.error("❌ Pin update error:", err);
                 showToast("Impossible de modifier l'épinglage.", "error");
+            }
+        }
+
+        async function archiveJob(jobId, title) {
+            if (!confirm(`Voulez-vous archiver (marquer comme expirée) l'offre d'emploi : "${title}" ?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('jobs')
+                    .update({ status: 'expired' })
+                    .eq('id', jobId);
+
+                if (error) throw error;
+                showToast("Offre marquée comme expirée (archivée).", "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("❌ Job archiving error:", err);
+                showToast("Impossible d'archiver cette offre.", "error");
+            }
+        }
+
+        async function restoreJob(jobId, title) {
+            if (!confirm(`Voulez-vous réactiver l'offre d'emploi : "${title}" ?`)) {
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from('jobs')
+                    .update({ status: 'active' })
+                    .eq('id', jobId);
+
+                if (error) throw error;
+                showToast("Offre réactivée avec succès !", "success");
+                loadDashboardData();
+            } catch (err) {
+                console.error("❌ Job restoring error:", err);
+                showToast("Impossible de réactiver cette offre.", "error");
             }
         }
 
