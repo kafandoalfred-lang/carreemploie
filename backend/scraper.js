@@ -1563,6 +1563,21 @@ async function runScraper() {
       console.log("\nℹ️ Pas de clé GEMINI_API_KEY ou toutes les offres sont déjà structurées.");
     }
 
+    // -- FILTRAGE COMPLÉMENTAIRE POST-IA POUR ARCHIVER LES OFFRES EXPIRÉES --
+    if (GEMINI_API_KEY && jobsToStructure.length > 0) {
+      console.log("\n🧹 Deuxième passe de filtrage pour archiver les offres ayant des dates d'expiration détectées par l'IA déjà dépassées...");
+      const finalActiveJobs = [];
+      for (const job of dbData.jobs) {
+        if (job.deadlineDate && /^\d{4}-\d{2}-\d{2}$/.test(job.deadlineDate) && job.deadlineDate < todayStr) {
+          console.log(`   🚫 Retrait immédiat post-IA (Offre expirée) : "${job.title}" (${job.company}) - Date : ${job.deadlineDate}`);
+          await archiveJobOnSupabase(job.id);
+        } else {
+          finalActiveJobs.push(job);
+        }
+      }
+      dbData.jobs = finalActiveJobs;
+    }
+
     // Écriture locale de secours
     fs.writeFileSync(DB_PATH, JSON.stringify(dbData, null, 2), 'utf8');
     console.log(`\n🏁 Collecte locale terminée. ${addedCount} nouvelles offres intégrées dans database.json.`);
