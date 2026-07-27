@@ -3,6 +3,25 @@ const path = require('path');
 const https = require('https');
 const querystring = require('querystring');
 
+// Charger le fichier .env local s'il existe (pour l'exécution locale)
+if (fs.existsSync(path.join(__dirname, '..', '.env'))) {
+  try {
+    const envContent = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8');
+    envContent.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const parts = trimmed.split('=');
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        const val = parts.slice(1).join('=').trim().replace(/^['"]|['"]$/g, '');
+        process.env[key] = val;
+      }
+    });
+  } catch (e) {
+    console.warn("⚠️ Impossible de lire le fichier .env :", e.message);
+  }
+}
+
 const DB_PATH = path.join(__dirname, 'database.json');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
