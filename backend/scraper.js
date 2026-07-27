@@ -920,7 +920,7 @@ function hashCode(str) {
 }
 
 async function fetchLinkedinJobs(existingJobIds) {
-  const url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=Burkina%20Faso&geoId=100587095&start=0";
+  const url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=recrutement&location=Burkina%20Faso&geoId=100587095&start=0";
   
   try {
     const html = await getRequest(url);
@@ -1129,7 +1129,7 @@ function uploadJobToSupabase(job) {
     description: job.description,
     source: job.source,
     url: job.url,
-    deadline_date: job.deadlineDate,
+    deadline_date: job.deadlineDate || null,
     scraped_at: job.scrapedAt || new Date().toISOString(),
     status: job.status || 'active'
   });
