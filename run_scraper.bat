@@ -12,7 +12,19 @@ echo PRÉREQUIS : Vous devez avoir installé Node.js sur votre PC.
 echo.
 echo ⏳ Analyse et synchronisation en cours...
 echo.
-node backend/scraper.js
+set NODE_BIN=node
+where node >nul 2>nul
+if %errorlevel% neq 0 (
+    if exist "C:\Program Files\nodejs\node.exe" (
+        set NODE_BIN="C:\Program Files\nodejs\node.exe"
+    ) else (
+        echo [ERREUR] Node.js n'est pas détecté. Veuillez l'installer depuis https://nodejs.org
+        pause
+        exit /b
+    )
+)
+
+%NODE_BIN% backend/scraper.js
 echo.
 echo ==========================================================
 echo ✅ Collecte terminée ! Les offres sont synchronisées sur le site.
