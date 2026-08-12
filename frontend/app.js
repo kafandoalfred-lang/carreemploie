@@ -1260,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buyButtons.forEach(button => {
         button.addEventListener('click', async () => {
             const planType = button.getAttribute('data-plan');
-            let planName = 'Premium 3 Mois';
+            let planName = 'Premium 2 Mois';
             let planPrice = '3 000 FCFA';
 
             if (planType === '5-months') {
