@@ -255,7 +255,8 @@ const CRAWL_TARGET_SITES = [
   { name: "unjobs.org", url: "https://unjobs.org/duty_stations/oua" },
   { name: "burkina24.com", url: "https://burkina24.com/tag/avis-de-recrutement/" },
   { name: "databases-humanprojectgroup.com", url: "https://databases-humanprojectgroup.com/index.php/espace-candidat" },
-  { name: "faso7.com", url: "https://faso7.com/tag/recrutement/" }
+  { name: "faso7.com", url: "https://faso7.com/tag/recrutement/" },
+  { name: "alertejob.org", url: "https://alertejob.org/job-list/" }
 ];
 
 // SIMULATION DE POSTS FACEBOOK BRUTS
@@ -307,7 +308,7 @@ function parseBfemploiHtml(html) {
   const blocks = html.split('<div class="div_rz_ance_gnral');
   const jobs = [];
 
-  const maxBlocks = Math.min(blocks.length, 16);
+  const maxBlocks = blocks.length;
   for (let i = 1; i < maxBlocks; i++) {
     const block = blocks[i];
     const urlMatch = block.match(/href=['"](annonce-details-[^'"]+\.html)['"]/i);
@@ -920,101 +921,195 @@ function hashCode(str) {
 }
 
 async function fetchLinkedinJobs(existingJobIds) {
-  const url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=recrutement&location=Burkina%20Faso&geoId=100587095&start=0";
+  const keywordsList = ["recrutement", "emploi", "Burkina", "BTP", "chauffeur"];
+  const jobs = [];
+  
+  for (const keyword of keywordsList) {
+    const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword)}&location=Burkina%20Faso&geoId=100587095&start=0`;
+    try {
+      console.log(`📡 Scan LinkedIn pour le mot-clé "${keyword}"...`);
+      const html = await getRequest(url);
+      const blocks = html.split('<div class="base-card');
+      
+      let validCount = 0;
+      for (let i = 1; i < blocks.length; i++) {
+        if (validCount >= 12) break; // Limiter pour éviter de surcharger
+        const block = blocks[i];
+        
+        const urlMatch = block.match(/href="([^"]+)"/i);
+        if (!urlMatch) continue;
+        const cleanUrl = urlMatch[1].split('?')[0];
+        
+        const titleMatch = block.match(/<h3 class="base-search-card__title">([\s\S]*?)<\/h3>/i);
+        if (!titleMatch) continue;
+        const title = titleMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        const companyMatch = block.match(/<a class="hidden-nested-link"[^>]*>([\s\S]*?)<\/a>/i);
+        const company = companyMatch ? companyMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Entreprise sur LinkedIn";
+        
+        const locationMatch = block.match(/<span class="job-search-card__location">([\s\S]*?)<\/span>/i);
+        const location = locationMatch ? locationMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Burkina Faso";
+        
+        const cleanLoc = location.toLowerCase();
+        const isValidBurkinaLocation = cleanLoc.includes("ouagadougou") || cleanLoc.includes("bobo") || cleanLoc.includes("koudougou") || cleanLoc === "burkina faso";
+        if (!isValidBurkinaLocation) {
+          continue; // Ignorer ce job spam international
+        }
+        
+        const urnMatch = block.match(/data-entity-urn="urn:li:jobPosting:([0-9]+)"/i);
+        const jobId = urnMatch ? urnMatch[1] : null;
+        const id = `job_linkedin_${jobId || Math.abs(hashCode(cleanUrl))}`;
+        
+        // Éviter les doublons dans les résultats cumulés de cette exécution ou déjà existants
+        if (jobs.some(j => j.id === id) || (existingJobIds && existingJobIds.has(id))) {
+          continue;
+        }
+        
+        // Récupérer la description brute réelle via l'API publique de détails LinkedIn
+        let description = "";
+        if (jobId) {
+          try {
+            console.log(`     📥 Téléchargement de la description pour l'offre LinkedIn ${jobId}...`);
+            const detailHtml = await getRequest(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`);
+            const descMatch = detailHtml.match(/<div class="show-more-less-html__markup[^>]*>([\s\S]*?)<\/div>/i);
+            if (descMatch) {
+              description = descMatch[1]
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n')
+                .replace(/<li>/gi, '\n- ')
+                .replace(/<[^>]+>/g, '')
+                .replace(/\n\s*\n+/g, '\n\n')
+                .trim();
+            }
+          } catch (detailErr) {
+            console.warn(`     ⚠️ Échec de la récupération de la description pour ${jobId} :`, detailErr.message);
+          }
+        }
+        
+        if (!description) {
+          description = `Offre de recrutement pour le poste de ${title} chez ${company} à ${location}. Veuillez consulter les détails complets sur la fiche d'origine.`;
+        }
+        
+        jobs.push({
+          id,
+          title,
+          company,
+          location,
+          description,
+          source: "linkedin.com",
+          url: cleanUrl,
+          deadlineDate: "",
+          scrapedAt: new Date().toISOString()
+        });
+        validCount++;
+      }
+    } catch (err) {
+      console.warn(`⚠️ Impossible de récupérer les offres de LinkedIn pour "${keyword}" :`, err.message);
+    }
+  }
+  return jobs;
+}
+
+async function fetchAlerteJobJobs(existingJobIds) {
+  const url = "https://alertejob.org/job-list/";
+  const jobs = [];
   
   try {
+    console.log("📡 Scan AlerteJob en cours...");
     const html = await getRequest(url);
-    const jobs = [];
-    const blocks = html.split('<div class="base-card');
     
-    let validCount = 0;
-    for (let i = 1; i < blocks.length; i++) {
-      if (validCount >= 15) break;
-      const block = blocks[i];
-      
-      const urlMatch = block.match(/href="([^"]+)"/i);
-      if (!urlMatch) continue;
-      const cleanUrl = urlMatch[1].split('?')[0];
-      
-      const titleMatch = block.match(/<h3 class="base-search-card__title">([\s\S]*?)<\/h3>/i);
-      if (!titleMatch) continue;
-      const title = titleMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-      
-      const companyMatch = block.match(/<a class="hidden-nested-link"[^>]*>([\s\S]*?)<\/a>/i);
-      const company = companyMatch ? companyMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Entreprise sur LinkedIn";
-      
-      const locationMatch = block.match(/<span class="job-search-card__location">([\s\S]*?)<\/span>/i);
-      const location = locationMatch ? locationMatch[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim() : "Burkina Faso";
-      
-      // Filtrer les fausses offres de backfill géographique de LinkedIn (Spam US/Japon)
-      const cleanLoc = location.toLowerCase();
-      const isValidBurkinaLocation = cleanLoc.includes("ouagadougou") || cleanLoc.includes("bobo") || cleanLoc.includes("koudougou") || cleanLoc === "burkina faso";
-      if (!isValidBurkinaLocation) {
-        continue; // Ignorer ce job spam international
+    // Extraire les liens des offres d'emploi
+    const matches = html.matchAll(/href=["']https:\/\/alertejob\.org\/job\/([^"']+)["']/g);
+    const jobUrls = [];
+    for (const m of matches) {
+      const jobUrl = `https://alertejob.org/job/${m[1]}`;
+      if (!jobUrls.includes(jobUrl)) {
+        jobUrls.push(jobUrl);
       }
+    }
+    
+    console.log(`   ↳ ${jobUrls.length} offres potentielles trouvées sur la liste d'AlerteJob.`);
+    
+    let processed = 0;
+    for (const jobUrl of jobUrls) {
+      if (processed >= 12) break; // Limite pour éviter la surcharge
       
-      const urnMatch = block.match(/data-entity-urn="urn:li:jobPosting:([0-9]+)"/i);
-      const jobId = urnMatch ? urnMatch[1] : null;
-      const id = `job_linkedin_${jobId || Math.abs(hashCode(cleanUrl))}`;
+      const slugMatch = jobUrl.match(/\/job\/([^/]+)/);
+      const slug = slugMatch ? slugMatch[1] : Date.now().toString();
+      const id = `job_alertejob_${slug}`;
       
-      // Si l'offre existe déjà, pas besoin de la réanalyser ni de la télécharger
       if (existingJobIds && existingJobIds.has(id)) {
         continue;
       }
       
-      // Récupérer la description brute réelle via l'API publique de détails LinkedIn
-      let description = "";
-      if (jobId) {
-        try {
-          console.log(`     📥 Téléchargement de la description pour l'offre LinkedIn ${jobId}...`);
-          const detailHtml = await getRequest(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`);
-          const descMatch = detailHtml.match(/<div class="show-more-less-html__markup[^>]*>([\s\S]*?)<\/div>/i);
-          if (descMatch) {
-            description = descMatch[1]
-              .replace(/<br\s*\/?>/gi, '\n')
-              .replace(/<\/p>/gi, '\n')
-              .replace(/<li>/gi, '\n- ')
-              .replace(/<[^>]+>/g, '')
-              .replace(/\n\s*\n+/g, '\n\n')
-              .trim();
+      try {
+        console.log(`     📥 Téléchargement des détails pour AlerteJob: ${slug}...`);
+        const detailHtml = await getRequest(jobUrl);
+        
+        // Extraction du JSON-LD structuré
+        const jsonLdMatch = detailHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+        if (jsonLdMatch) {
+          const json = JSON.parse(jsonLdMatch[1].trim());
+          
+          const rawTitle = json.title || json.name || "Offre d'emploi";
+          const title = rawTitle.replace(/&amp;/g, '&').replace(/&#8211;/g, '-').replace(/&nbsp;/g, ' ').trim();
+          
+          const company = json.hiringOrganization ? json.hiringOrganization.name : "Structure non spécifiée";
+          
+          let rawDesc = json.description || "";
+          let description = rawDesc
+            .replace(/&amp;nbsp;/gi, ' ')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<li>/gi, '\n- ')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\n\s*\n+/g, '\n\n')
+            .trim();
+            
+          let deadlineDate = "";
+          if (json.validThrough) {
+            deadlineDate = json.validThrough.split('T')[0];
           }
-        } catch (detailErr) {
-          console.warn(`     ⚠️ Échec de la récupération de la description pour ${jobId} :`, detailErr.message);
+          
+          let location = "Burkina Faso";
+          if (json.jobLocation) {
+            const locObj = json.jobLocation;
+            if (locObj.address) {
+              const addr = typeof locObj.address === 'string' ? locObj.address : (locObj.address.addressLocality || locObj.address.addressRegion || "Burkina Faso");
+              location = addr.replace(/AFRIQUE,\s*/gi, '').trim();
+            }
+          }
+          
+          jobs.push({
+            id,
+            title,
+            company,
+            location,
+            description,
+            source: "alertejob.org",
+            url: jobUrl,
+            deadlineDate,
+            scrapedAt: new Date().toISOString()
+          });
+          processed++;
         }
+      } catch (err) {
+        console.warn(`     ⚠️ Échec du parsing de l'offre ${jobUrl} :`, err.message);
       }
-      
-      if (!description) {
-        description = `Offre de recrutement pour le poste de ${title} chez ${company} à ${location}. Veuillez consulter les détails complets sur la fiche d'origine.`;
-      }
-
-      const deadlineDate = "";
-      
-      jobs.push({
-        id,
-        title,
-        company,
-        location,
-        description,
-        source: "linkedin.com",
-        url: cleanUrl,
-        deadlineDate,
-        scrapedAt: new Date().toISOString()
-      });
-      validCount++;
     }
-    
-    return jobs;
   } catch (err) {
-    console.warn("⚠️ Impossible de récupérer les offres de LinkedIn :", err.message);
-    return [];
+    console.warn("⚠️ Impossible de récupérer les offres d'AlerteJob :", err.message);
   }
+  
+  return jobs;
 }
 
 function parseLefasoHtml(html) {
   const jobBlocks = html.split('<div class="row"');
   const jobs = [];
 
-  const maxBlocks = Math.min(jobBlocks.length, 16);
+  const maxBlocks = jobBlocks.length;
   for (let i = 1; i < maxBlocks; i++) {
     const block = jobBlocks[i];
     if (!block.includes('class="offre-title"')) continue;
@@ -1501,6 +1596,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler LinkedIn :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : AlerteJob
+    console.log("\n🌐 Crawling en direct de AlerteJob...");
+    try {
+      const alerteJobJobs = await fetchAlerteJobJobs(existingJobIds);
+      console.log(`   ↳ ${alerteJobJobs.length} offres extraites de AlerteJob.`);
+      
+      alerteJobJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL ALERTEJOB] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler AlerteJob :", crawlErr.message);
     }
 
     // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES OU SANS DATE LIMITE --
