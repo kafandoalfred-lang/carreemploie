@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Variables pour la traduction automatique client-side
+    let currentJobOriginalDesc = "";
+    let currentJobTranslatedDesc = "";
+    let isTranslated = false;
+
     // --- 0. INITIALISATION DU CLIENT SUPABASE ---
     // Remplir ces variables avec vos clés réelles pour activer la base de données cloud
     const SUPABASE_URL = "https://yyqybbzlcrvwupfbjwtc.supabase.co"; 
@@ -739,6 +744,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const job = jobsList.find(j => j.title === jobTitle);
         if (!job) return;
 
+        // Sauvegarder pour la traduction
+        currentJobOriginalDesc = job.description;
+        currentJobTranslatedDesc = "";
+        isTranslated = false;
+        
+        const btnTranslate = document.getElementById('btn-translate-desc');
+        if (btnTranslate) {
+            btnTranslate.innerHTML = `<i class="fa-solid fa-language"></i> Traduire en Français`;
+            btnTranslate.style.display = 'flex';
+            btnTranslate.disabled = false;
+            btnTranslate.style.opacity = '1';
+        }
+
         document.getElementById('detail-job-title').textContent = job.title;
         document.getElementById('detail-job-company').textContent = job.company;
         document.getElementById('detail-job-location').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${job.location}`;
@@ -1311,6 +1329,77 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDetailCancel) {
         btnDetailCancel.addEventListener('click', () => {
             if (detailsModal) detailsModal.classList.remove('open');
+        });
+    }
+
+    // Bouton de traduction de la description du poste
+    const btnTranslateDesc = document.getElementById('btn-translate-desc');
+    if (btnTranslateDesc) {
+        btnTranslateDesc.addEventListener('click', async () => {
+            if (isTranslated) {
+                // Revenir au texte d'origine
+                const formattedDesc = currentJobOriginalDesc
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+                document.getElementById('detail-job-desc').innerHTML = formattedDesc;
+                btnTranslateDesc.innerHTML = `<i class="fa-solid fa-language"></i> Traduire en Français`;
+                isTranslated = false;
+            } else {
+                if (currentJobTranslatedDesc) {
+                    // Réaffichage direct
+                    document.getElementById('detail-job-desc').innerHTML = currentJobTranslatedDesc;
+                    btnTranslateDesc.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Voir l'original`;
+                    isTranslated = true;
+                    return;
+                }
+                
+                try {
+                    btnTranslateDesc.disabled = true;
+                    btnTranslateDesc.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Traduction...`;
+                    
+                    // Traduire le texte par blocs
+                    const chunks = [];
+                    let currentChunk = '';
+                    const lines = currentJobOriginalDesc.split('\n');
+                    
+                    for (const line of lines) {
+                        if ((currentChunk + '\n' + line).length > 1500) {
+                            chunks.push(currentChunk);
+                            currentChunk = line;
+                        } else {
+                            currentChunk = currentChunk ? currentChunk + '\n' + line : line;
+                        }
+                    }
+                    if (currentChunk) {
+                        chunks.push(currentChunk);
+                    }
+                    
+                    const translatedChunks = [];
+                    for (const chunk of chunks) {
+                        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=fr&dt=t&q=${encodeURIComponent(chunk)}`;
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error("HTTP error " + res.status);
+                        const data = await res.json();
+                        const translatedText = data[0].map(item => item[0]).join('');
+                        translatedChunks.push(translatedText);
+                    }
+                    
+                    const rawTranslation = translatedChunks.join('\n');
+                    currentJobTranslatedDesc = rawTranslation
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                    
+                    document.getElementById('detail-job-desc').innerHTML = currentJobTranslatedDesc;
+                    btnTranslateDesc.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Voir l'original`;
+                    isTranslated = true;
+                } catch (err) {
+                    console.error("Translation failed:", err);
+                    showToast("Impossible de traduire cette description.", "error");
+                    btnTranslateDesc.innerHTML = `<i class="fa-solid fa-language"></i> Traduire en Français`;
+                } finally {
+                    btnTranslateDesc.disabled = false;
+                }
+            }
         });
     }
 

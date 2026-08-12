@@ -584,7 +584,12 @@
             </div>
 
             <div style="max-height: 250px; overflow-y: auto; margin-bottom: 25px; line-height: 1.6; color: var(--text-secondary); font-size: 0.95rem; padding-right: 5px; text-align: left;">
-                <h4 style="color: var(--text-primary); margin-bottom: 10px; font-size: 1.05rem;">Description du poste :</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="color: var(--text-primary); margin: 0; font-size: 1.05rem;">Description du poste :</h4>
+                    <button id="btn-translate-desc" style="background: rgba(25, 103, 210, 0.1); color: var(--primary-color); border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;">
+                        <i class="fa-solid fa-language"></i> Traduire en Français
+                    </button>
+                </div>
                 <p id="detail-job-desc" style="white-space: pre-line; margin: 0;"></p>
             </div>
 
