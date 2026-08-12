@@ -1260,15 +1260,12 @@ document.addEventListener('DOMContentLoaded', () => {
     buyButtons.forEach(button => {
         button.addEventListener('click', async () => {
             const planType = button.getAttribute('data-plan');
-            let planName = 'Premium Mensuel';
-            let planPrice = '5 000 FCFA';
+            let planName = 'Premium 3 Mois';
+            let planPrice = '3 000 FCFA';
 
-            if (planType === 'semi-annual' || planType === 'semi') {
-                planName = 'Premium 6 Mois';
-                planPrice = '25 000 FCFA';
-            } else if (planType === 'annual') {
-                planName = 'Premium Annuel';
-                planPrice = '40 000 FCFA';
+            if (planType === '5-months') {
+                planName = 'Premium 5 Mois';
+                planPrice = '5 000 FCFA';
             }
 
             if (!profile) {
