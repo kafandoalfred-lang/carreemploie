@@ -748,7 +748,8 @@ function extractFrenchDateFromText(text) {
     'décembre': '12', 'déc': '12', 'dec': '12',
     'january': '01', 'february': '02', 'march': '03', 'april': '04', 
     'june': '06', 'july': '07', 'august': '08', 'september': '09', 
-    'october': '10', 'november': '11', 'december': '12'
+    'october': '10', 'november': '11', 'december': '12',
+    'feb': '02', 'apr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'aug': '08'
   };
 
   const deadlineKeywords = [
@@ -764,6 +765,30 @@ function extractFrenchDateFromText(text) {
   while ((match = textDateRegex.exec(cleanText)) !== null) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase();
+    const year = match[3];
+    
+    let monthVal = null;
+    for (const [key, val] of Object.entries(months)) {
+      if (monthName.startsWith(key)) {
+        monthVal = val;
+        break;
+      }
+    }
+    
+    if (monthVal) {
+      datesFound.push({
+        iso: `${year}-${monthVal}-${day}`,
+        index: match.index,
+        text: match[0]
+      });
+    }
+  }
+
+  // 1.2 Recherche des dates textuelles en format anglais : Month DD, YYYY (ex: Aug 18, 2026)
+  const englishTextDateRegex = /\b([a-z]{3,10})\s+([0-9]{1,2}),?\s+([0-9]{4})\b/g;
+  while ((match = englishTextDateRegex.exec(cleanText)) !== null) {
+    const monthName = match[1].toLowerCase();
+    const day = match[2].padStart(2, '0');
     const year = match[3];
     
     let monthVal = null;
@@ -991,6 +1016,16 @@ async function fetchLinkedinJobs(existingJobIds) {
           description = `Offre de recrutement pour le poste de ${title} chez ${company} à ${location}. Veuillez consulter les détails complets sur la fiche d'origine.`;
         }
         
+        const datetimeMatch = block.match(/datetime="([^"]+)"/i);
+        let scrapedAt = new Date().toISOString();
+        if (datetimeMatch) {
+          try {
+            scrapedAt = new Date(datetimeMatch[1] + 'T00:00:00').toISOString();
+          } catch (e) {
+            // Repli au temps actuel en cas d'erreur de conversion
+          }
+        }
+
         jobs.push({
           id,
           title,
@@ -1000,7 +1035,7 @@ async function fetchLinkedinJobs(existingJobIds) {
           source: "linkedin.com",
           url: cleanUrl,
           deadlineDate: "",
-          scrapedAt: new Date().toISOString()
+          scrapedAt: scrapedAt
         });
         validCount++;
       }
