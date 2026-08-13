@@ -256,7 +256,8 @@ const CRAWL_TARGET_SITES = [
   { name: "burkina24.com", url: "https://burkina24.com/tag/avis-de-recrutement/" },
   { name: "databases-humanprojectgroup.com", url: "https://databases-humanprojectgroup.com/index.php/espace-candidat" },
   { name: "faso7.com", url: "https://faso7.com/tag/recrutement/" },
-  { name: "alertejob.org", url: "https://alertejob.org/job-list/" }
+  { name: "alertejob.org", url: "https://alertejob.org/job-list/" },
+  { name: "glextalent.com", url: "https://glextalent.com/jobs" }
 ];
 
 // SIMULATION DE POSTS FACEBOOK BRUTS
@@ -1067,8 +1068,8 @@ async function fetchAlerteJobJobs(existingJobIds) {
             .replace(/\n\s*\n+/g, '\n\n')
             .trim();
             
-          let deadlineDate = "";
-          if (json.validThrough) {
+          let deadlineDate = extractFrenchDateFromText(description);
+          if (!deadlineDate && json.validThrough) {
             deadlineDate = json.validThrough.split('T')[0];
           }
           
@@ -1102,6 +1103,81 @@ async function fetchAlerteJobJobs(existingJobIds) {
     console.warn("⚠️ Impossible de récupérer les offres d'AlerteJob :", err.message);
   }
   
+  return jobs;
+}
+
+async function fetchGlexTalentJobs(existingJobIds) {
+  const url = "https://glextalent.com/api/v1/jobs";
+  const jobs = [];
+
+  try {
+    console.log("📥 Récupération des offres depuis glextalent.com...");
+    const jsonStr = await getRequest(url);
+    if (!jsonStr) {
+      console.warn("⚠️ Pas de contenu retourné par glextalent.com");
+      return [];
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(jsonStr);
+    } catch (e) {
+      console.warn("⚠️ Impossible de parser le JSON de glextalent.com :", e.message);
+      return [];
+    }
+
+    if (!Array.isArray(payload)) {
+      console.warn("⚠️ Structure JSON invalide (pas un tableau) pour glextalent.com");
+      return [];
+    }
+
+    console.log(`   ↳ ${payload.length} offres trouvées sur GLEX Talent.`);
+
+    for (const rawJob of payload) {
+      if (!rawJob.is_active || rawJob.is_draft) continue;
+
+      const id = `job_glextalent_${rawJob.id}`;
+      const jobUrl = `https://glextalent.com/jobs/${rawJob.id}`;
+
+      if (existingJobIds && existingJobIds.has(id)) {
+        continue;
+      }
+
+      const title = (rawJob.title || "Offre d'emploi").trim();
+      const company = (rawJob.company_name || "Structure non spécifiée").trim();
+      let location = (rawJob.location || "Burkina Faso").trim();
+      
+      location = location.replace(/AFRIQUE,\s*/gi, '').trim();
+      if (!location) location = "Burkina Faso";
+
+      const description = (rawJob.description || "").trim();
+
+      let deadlineDate = "";
+      if (rawJob.application_deadline) {
+        deadlineDate = rawJob.application_deadline.split('T')[0];
+      } else {
+        const extDate = extractFrenchDateFromText(description);
+        if (extDate) {
+          deadlineDate = extDate;
+        }
+      }
+
+      jobs.push({
+        id,
+        title,
+        company,
+        location,
+        description,
+        source: "glextalent.com",
+        url: jobUrl,
+        deadlineDate,
+        scrapedAt: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    console.warn("⚠️ Impossible de récupérer les offres de glextalent.com :", err.message);
+  }
+
   return jobs;
 }
 
@@ -1615,6 +1691,25 @@ async function runScraper() {
       });
     } catch (crawlErr) {
       console.warn("⚠️ Impossible de crawler AlerteJob :", crawlErr.message);
+    }
+
+    // CRAWLING RÉEL : GLEX Talent
+    console.log("\n🌐 Crawling en direct de GLEX Talent...");
+    try {
+      const glexJobs = await fetchGlexTalentJobs(existingJobIds);
+      console.log(`   ↳ ${glexJobs.length} offres extraites de GLEX Talent.`);
+      
+      glexJobs.forEach(job => {
+        if (!existingJobIds.has(job.id)) {
+          dbData.jobs.push(job);
+          existingJobIds.add(job.id);
+          newlyAddedJobs.push(job);
+          console.log(`[REAL CRAWL GLEXTALENT] ${job.title} - ${job.company} (${job.location})`);
+          addedCount++;
+        }
+      });
+    } catch (crawlErr) {
+      console.warn("⚠️ Impossible de crawler GLEX Talent :", crawlErr.message);
     }
 
     // -- FILTRAGE ET RETRAIT DES OFFRES EXPIRÉES OU SANS DATE LIMITE --
